@@ -1,13 +1,4 @@
-/*
- You will also write a C program to run on a UNIX host that communicates with the Arduino. The program
-will expose a command prompt that supports the following commands:
-• show X: Set the output device to show X as the current heart rate instead of the current real-time value.
-This will be useful while debugging.
-• pause: Pause the output and keep the display device showing the current reading
-• resume: Show the real-time heart rate on the display device. This should be the default mode of the
-system
-• exit: Exits the host program
- */
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -30,7 +21,7 @@ int send_cmd(int fd, char *cmd, size_t len);
 
 int
 main(int argc, char **argv) {
-    int fd;
+   int fd;
     char *device;
     int ret;
 
@@ -41,7 +32,7 @@ main(int argc, char **argv) {
     if (argc == 2) {
         device = argv[1];
     } else {
-        device = "/dev/ttyACM0";
+        device = "/dev/tty.usbmodem1421";
     }
 
     /*
@@ -51,6 +42,7 @@ main(int argc, char **argv) {
      * O_NDELAY: Open the resource in nonblocking mode
      */
     fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY);
+
     if (fd == -1) {
         perror("Error opening serial");
         return -1;
@@ -80,51 +72,101 @@ main_loop(int fd) {
         perror("Unable to allocate buffer");
         exit(1);
     }
-    char *input;
-    char *on = "on";
-    char *off = "off";
-    char *help = "help";
-    char *exit = "exit";
-    int ret;
 
-    // Serial.begin(9600);
-    
+    	char *showX = "showX\n";
+    	char *pause = "pause\n";
+    	char *resume = "resume\n";
+    	char *exit = "exit\n";
+    	char *help = "help\n";
+
+        char *command1 = "shX\r";
+        char *command2 = "PAU\r";
+        char *command3 = "RES\r";
 
 
-    /* 
-    MARCH 20TH LAB 
-    HERE 
-    */
+        int running = 1;
 
-        // *  - Prompt user for input
-        printf("Input data.\n");
-        printf("on - turns on the built in LED");
-        bytes_in = getline(&buffer,&buffer_size,stdin);
-        printf("%zu characters were read.\n",bytes_in);
-        printf("You typed: '%s'\n",buffer);
-        // on - turns on the built in LED
-        // figure out arduino communication??  
-        if(strcmp(input,on)==0){
-            /* insert code to turn LED on */
+        int ret;
 
-        }
-        // off - turns off the built in LED 
-        if(strcmp(input,off)==0){
-            /* insert code to turn LED off */
+        while(running!=0){
+            // *  - Prompt user for input
+        	printf("Please input one of the following options\n");
+        	printf("showX\n"); // 1 
+        	printf("pause\n"); // 2 
+        	printf("resume\n"); // 3 
+        	printf("exit\n"); // 4 
+            printf("help\n"); // 5 
+            printf("\n");
 
-        }
-        // help - show this list of commands 
-        if(strcmp(input,help)==0){
-            /* insert code to show list of commands */
+            bytes_in = getline(&buffer,&buffer_size,stdin);
+            printf("\n");
+            printf("%zu characters were read.\n",bytes_in);
+            printf("You typed: %s\n",buffer);
 
-        }
-        // exit - quit the program 
-        if(strcmp(input,exit)==0){
-            /* insert code to quit program */
+            
 
-        }
+    	     int n; // number of bytes sent to arduino (greater than 0 if successful)
 
-        return(0);
+            /* showX: : Set the output device to show X as the current heart rate 
+            instead of the current real-time value.
+    		This will be useful while debugging.
+    		*/
+            if(strcmp(buffer,showX)==0){
+                n = send_cmd(fd,command1,4);
+    		    if(n>0){
+                    ret = 0;
+                }
+                else {
+                    ret = 1;
+                }
+            }
+
+
+
+            /*pause: Pause the output and keep the display device showing the 
+            current reading */
+            if(strcmp(buffer,pause)==0){
+                n = send_cmd(fd,command2,4);
+        		if(n>0){
+                    ret = 0;
+                }
+                else {
+                    ret = 1;
+                }
+            }
+
+            /*resume: Show the real-time heart rate on the display device. 
+            This should be the default mode of the system. */
+            if(strcmp(buffer,resume)==0){
+                n = send_cmd(fd,command3,4);
+    		    if(n>0){
+                    ret = 0;
+                }
+                else {
+                    ret = 1;
+                }
+            }
+
+
+            // Displays list of available commands 
+            if(strcmp(buffer,help)==0){
+                printf("Commands available: \n");
+                printf("1. showX : Sets LCD to show X as current heart rate instead of the current real-time value. \n");
+                printf("2. pause : Pauses the output and keeps the display device showing the current reading. \n");
+                printf("3. resume : Shows the real-time heart rate on the display device. (Default mode of system) \n");
+                printf("4. exit : Exits the host program \n");
+                printf("5. help : Self explanatory \n");
+                ret = 0;
+            }
+
+            // exit: Exits the host program. 
+            if(strcmp(buffer,exit)==0){
+                printf("Exiting program...\n");
+                ret = 0;
+                running = 0;
+            }
+    }
+        return ret;
 }
 
 int
