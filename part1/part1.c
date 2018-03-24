@@ -102,28 +102,39 @@ main_loop(int fd) {
         printf("%zu characters were read.\n",bytes_in);
         printf("You typed: '%s'\n",buffer);
 
+	int n;
+
         /* showX: : Set the output device to show X as the current heart rate 
         instead of the current real-time value.
 		This will be useful while debugging.
 		*/
         if(strcmp(buffer,showX)==0){
-            ret = 1;
-            return ret;
+            n = write(fd, "shX\r", 4);
+		if (n < 0)
+  		fputs("write() of 4 bytes failed!\n", stderr);
+		ret = 1;
+            	return ret;
         }
 
 
         /*pause: Pause the output and keep the display device showing the 
         current reading */
         if(strcmp(buffer,pause)==0){
-            ret = 2;
-            return ret;
+            n = write(fd, "PAU\r", 4);
+		if (n < 0)
+  		fputs("write() of 4 bytes failed!\n", stderr);
+		ret = 2;
+            	return ret;
         }
 
         /*resume: Show the real-time heart rate on the display device. 
         This should be the default mode of the system. */
         if(strcmp(buffer,resume)==0){
-            ret = 3; 
-            return ret;
+            n = write(fd, "RES\r", 4);
+		if (n < 0)
+ 		fputs("write() of 4 bytes failed!\n", stderr);
+		ret = 3;
+            	return ret;
 
         }
 
