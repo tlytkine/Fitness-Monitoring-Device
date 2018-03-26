@@ -32,7 +32,7 @@ main(int argc, char **argv) {
     if (argc == 2) {
         device = argv[1];
     } else {
-        device = "/dev/tty.usbmodem1421";
+        device = "/dev/tty.usbmodem1411";
     }
 
     /*
@@ -65,7 +65,7 @@ main_loop(int fd) {
 
     char *buffer;
     size_t bytes_in;
-    size_t buffer_size = 64; // or 32???
+    size_t buffer_size = 128;
     // size_t characters; 
     buffer = (char *)malloc(buffer_size * sizeof(char));
     if(buffer == NULL){
@@ -112,7 +112,8 @@ main_loop(int fd) {
     		This will be useful while debugging.
     		*/
             if(strcmp(buffer,showX)==0){
-                n = send_cmd(fd,command1,4);
+                size_t c1 = strlen(command1);
+                n = send_cmd(fd,command1,c1);
     		    if(n>0){
                     ret = 0;
                 }
@@ -126,7 +127,8 @@ main_loop(int fd) {
             /*pause: Pause the output and keep the display device showing the 
             current reading */
             if(strcmp(buffer,pause)==0){
-                n = send_cmd(fd,command2,4);
+                size_t c2 = strlen(command2);
+                n = send_cmd(fd,command2,c2);
         		if(n>0){
                     ret = 0;
                 }
@@ -138,7 +140,8 @@ main_loop(int fd) {
             /*resume: Show the real-time heart rate on the display device. 
             This should be the default mode of the system. */
             if(strcmp(buffer,resume)==0){
-                n = send_cmd(fd,command3,4);
+                size_t c3 = strlen(command3);
+                n = send_cmd(fd,command3,c3);
     		    if(n>0){
                     ret = 0;
                 }
@@ -165,6 +168,7 @@ main_loop(int fd) {
                 ret = 0;
                 running = 0;
             }
+      
     }
         return ret;
 }
@@ -192,6 +196,7 @@ send_cmd(int fd, char *cmd, size_t len) {
         return -1;
     }
 
+    // Responses aka the BPM, Signal, IBI needs to be stored
     printf("Response: %s\n", buf);
     return count;
 }
@@ -204,7 +209,7 @@ init_tty(int fd) {
     // * Configure the serial port.
     // * First, get a reference to options for the tty
     cfsetospeed(&tty, (speed_t)B9600);
-   //  * Then, set the baud rate to 9600 (same as on Arduino)
+
     
     memset(&tty, 0, sizeof(tty));
     if (tcgetattr(fd, &tty) == -1) {

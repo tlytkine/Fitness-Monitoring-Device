@@ -28,7 +28,6 @@ int prevBPM = 0;                  // previously stored BPM value
 
 String command;
 
-
 // Volatile Variables, used in the interrupt service routine!
 volatile int BPM;                   // int that holds raw Analog in 0. updated every 2mS
 volatile int Signal;                // holds the incoming raw data
@@ -36,84 +35,89 @@ volatile int IBI = 600;             // int that holds the time interval between 
 volatile boolean Pulse = false;     // "True" when User's live heartbeat is detected. "False" when not a "live beat".
 volatile boolean QS = false;        // becomes true when Arduoino finds a beat.
 
-// SET THE SERIAL OUTPUT TYPE TO YOUR NEEDS
-// PROCESSING_VISUALIZER works with Pulse Sensor Processing Visualizer
-//      https://github.com/WorldFamousElectronics/PulseSensor_Amped_Processing_Visualizer
-// SERIAL_PLOTTER outputs sensor data for viewing with the Arduino Serial Plotter
-//      run the Serial Plotter at 115200 baud: Tools/Serial Plotter or Command+L
+
+
+boolean paused = false;
+
+
 static int outputType = SERIAL_PLOTTER;
 
 
 void setup(){
   pinMode(blinkPin,OUTPUT);         // pin that will blink to your heartbeat!
   pinMode(fadePin,OUTPUT);          // pin that will fade to your heartbeat!
-  Serial.begin(115200);             // we agree to talk fast!
+  Serial.begin(9600);             // we agree to talk fast!
   interruptSetup();                 // sets up to read Pulse Sensor signal every 2mS
-   // IF YOU ARE POWERING The Pulse Sensor AT VOLTAGE LESS THAN THE BOARD VOLTAGE,
-   // UN-COMMENT THE NEXT LINE AND APPLY THAT VOLTAGE TO THE A-REF PIN
-//   analogReference(EXTERNAL);
   lcd.begin(16,2);
+
 }
 
 
-//  Where the Magic Happens
+
 void loop(){
 
-  
-    serialOutput() ;
+    if(paused==false){
+      Serial.write(BPM);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("BPM: ");
+      lcd.setCursor(0,1);
+      lcd.print(BPM);
+    }
     String showX = "shX\r";
     String pause = "PAU\r";
     String resume_var = "RES\r";
 
-  // March 24th added 
-  while(Serial.available()){
-    command = Serial.readString();
 
-    Serial.println(command);
+  
+  while(Serial.available());
+    command = Serial.readString();
+    
+
+    if(command.equals(resume_var)){
+        paused = false;
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.write("BPM: ");
+        lcd.setCursor(0,1);
+        lcd.print(BPM);
+        fadeRate = 255;
+        delay(100);
+    }
     if(command.equals(showX)){
+      paused = true;
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.write("BPM: ");
       lcd.setCursor(0,1);
       lcd.print("X");
-      
+      Serial.print(BPM);
+      Serial.flush();
+      fadeRate = 0;
+      delay(100);
     }
     if(command.equals(pause)){
-      if(QS==false){
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.write("BPM: ");
-        lcd.setCursor(0,1);
-        lcd.print(prevBPM);
-      }
+      paused = true;
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.write("BPM: ");
+      lcd.setCursor(0,1);
+      lcd.print(BPM);
+      Serial.print(BPM);
+      Serial.flush();
+      fadeRate = 0;
+      delay(100);
     }
-    if(command.equals(resume_var)){
-      if(QS==true){
-       fadeRate = 255;                               
-        serialOutputWhenBeatHappens();   
-        prevBPM = BPM;
-        QS = false;        
-      }
-    }
-  }
+
+  
   if (QS == true){     // A Heartbeat Was Found
-                       // BPM and IBI have been Determined
-                       // Quantified Self "QS" true when arduino finds a heartbeat
-        fadeRate = 255;         // Makes the LED Fade Effect Happen
-                                // Set 'fadeRate' Variable to 255 to fade LED with pulse
-        serialOutputWhenBeatHappens();   // A Beat Happened, Output that to serial.
-        prevBPM = BPM;
-        QS = false;                      // reset the Quantified Self flag for next time
+        fadeRate = 255;         
+        prevBPM = BPM;               
   }
-
-  ledFadeToBeat();                      // Makes the LED Fade Effect Happen
-  delay(20);                             //  take a break
-
+  ledFadeToBeat();                    
+  delay(IBI);                           
 
 }
-
-
-
 
 
 void ledFadeToBeat(){

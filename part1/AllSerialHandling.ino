@@ -14,7 +14,6 @@ void serialOutput(){   // Decide How To Output Serial.
       break;
     case SERIAL_PLOTTER:  // open the Arduino Serial Plotter to visualize these data
       Serial.print(BPM);
-      // prints BPM after "BPM: " to LCD 
       Serial.print(",");
       Serial.print(IBI);
       Serial.print(",");
