@@ -20,3 +20,6 @@ $(TARGET): $(TARGET).c
 		$(CC) $(CFLAGS) -o $(EXEC) $(FILE)
 clean:
 		$(RM) $(EXEC)
+
+run: $(EXEC)
+	./$(EXEC)
