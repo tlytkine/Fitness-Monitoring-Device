@@ -10,7 +10,7 @@ CC = gcc
 CFLAGS = -g -Wall -pedantic -Werror -Wextra 
 
 # name of executable file 
-EXEC = part1.o
+EXEC = part1
 # name of c file to compile 
 FILE = part1.c
 
