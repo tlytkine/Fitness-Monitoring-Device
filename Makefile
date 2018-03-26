@@ -1,24 +1,22 @@
+# Specifies gcc as compiler 
+CC = gcc 
 
-.PHONY: test clean
+# Compiler flags: -g -Wall -pedantic -Werror -Wextra 
+# -g to make file debuggable 
+# -Wall turns on compiler warnings 
+# -pedantic
+# -Werror 
+# -Wextra
+CFLAGS = -g -Wall -pedantic -Werror -Wextra 
 
-# Can't have unused variables 
-# Can't have unused parameters 
-# No newline at end of file 
-CC=gcc
-CFLAGS= -g -Wall -pedantic -Werror -Wextra 
+# name of executable file 
+EXEC = part1.o
+# name of c file to compile 
+FILE = part1.c
 
+all: $(EXEC)
 
-OBJS=part1.o
-
-all: part1.o
-
-part1.o: part1.c 
-		$(CC) $(CFLAGS) -c part1.c
-
-part1: $(OBJS)
-		$(CC) $(CFLAGS) -I./ part1.c -o part1.o 
-
-
+$(TARGET): $(TARGET).c
+		$(CC) $(CFLAGS) -o $(EXEC) $(FILE)
 clean:
-	rm -f part1.o
-
+		$(RM) $(EXEC)
