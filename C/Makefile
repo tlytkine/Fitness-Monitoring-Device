@@ -15,11 +15,12 @@ EXEC = part1
 FILE = part1.c
 
 all: $(EXEC)
-
+# generates executable file part1 
 $(TARGET): $(TARGET).c
 		$(CC) $(CFLAGS) -o $(EXEC) $(FILE)
+# command to generate executable file 
 clean:
 		$(RM) $(EXEC)
-
+# command to run executable file 
 run: $(EXEC)
 	./$(EXEC)

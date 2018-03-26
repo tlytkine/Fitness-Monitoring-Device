@@ -22,11 +22,14 @@ LiquidCrystal lcd(12,11,5,4,3,2);
 //  Variables
 int pulsePin = 0;                 // Pulse Sensor purple wire connected to analog pin 0
 int blinkPin = 13;                // pin to blink led at each beat
-int fadePin = 8;                  // pin to do fancy classy fading blink at each beat
+int realTime = 8;                  // pin to do fancy classy fading blink at each beat
 int fadeRate = 0;                 // used to fade LED on with PWM on fadePin
 int prevBPM = 0;                  // previously stored BPM value 
 
 String command;
+String showX = "shX\r";
+String pause = "PAU\r";
+String resume_var = "RES\r";
 
 // Volatile Variables, used in the interrupt service routine!
 volatile int BPM;                   // int that holds raw Analog in 0. updated every 2mS
@@ -37,7 +40,7 @@ volatile boolean QS = false;        // becomes true when Arduoino finds a beat.
 
 
 
-boolean paused = false;
+boolean paused = false; // Boolean that is changed based on terminal output 
 
 
 static int outputType = SERIAL_PLOTTER;
@@ -45,7 +48,7 @@ static int outputType = SERIAL_PLOTTER;
 
 void setup(){
   pinMode(blinkPin,OUTPUT);         // pin that will blink to your heartbeat!
-  pinMode(fadePin,OUTPUT);          // pin that will fade to your heartbeat!
+  pinMode(realTime,OUTPUT);          // pin that will fade to your heartbeat!
   Serial.begin(9600);             // we agree to talk fast!
   interruptSetup();                 // sets up to read Pulse Sensor signal every 2mS
   lcd.begin(16,2);
@@ -63,14 +66,16 @@ void loop(){
       lcd.print("BPM: ");
       lcd.setCursor(0,1);
       lcd.print(BPM);
+      digitalWrite(realTime, HIGH);
     }
-    String showX = "shX\r";
-    String pause = "PAU\r";
-    String resume_var = "RES\r";
+    else{
+      digitalWrite(realTime, LOW);
+    }
+    
 
 
   
-  while(Serial.available());
+  if(Serial.available()){
     command = Serial.readString();
     
 
@@ -81,10 +86,9 @@ void loop(){
         lcd.write("BPM: ");
         lcd.setCursor(0,1);
         lcd.print(BPM);
-        fadeRate = 255;
         delay(100);
     }
-    if(command.equals(showX)){
+    else if(command.equals(showX)){
       paused = true;
       lcd.clear();
       lcd.setCursor(0,0);
@@ -93,10 +97,9 @@ void loop(){
       lcd.print("X");
       Serial.print(BPM);
       Serial.flush();
-      fadeRate = 0;
       delay(100);
     }
-    if(command.equals(pause)){
+    else if(command.equals(pause)){
       paused = true;
       lcd.clear();
       lcd.setCursor(0,0);
@@ -105,23 +108,15 @@ void loop(){
       lcd.print(BPM);
       Serial.print(BPM);
       Serial.flush();
-      fadeRate = 0;
       delay(100);
     }
+  }
 
   
-  if (QS == true){     // A Heartbeat Was Found
-        fadeRate = 255;         
+  if (QS == true){     // A Heartbeat Was Found        
         prevBPM = BPM;               
-  }
-  ledFadeToBeat();                    
+  }                  
   delay(IBI);                           
 
 }
 
-
-void ledFadeToBeat(){
-    fadeRate -= 15;                         //  set LED fade value
-    fadeRate = constrain(fadeRate,0,255);   //  keep LED fade value from going into negative numbers!
-    analogWrite(fadePin,fadeRate);          //  fade LED
-  }
