@@ -3,7 +3,7 @@ final-project-nextgenproductions2 created by GitHub Classroom
 # To do 
 
 - Fix makefile 
-- Get potentiometer 
+- <strike>Get potentiometer</strike>
 - Debug 
 - Fritzing diagram
-- Write up 
+- <strike>Write up</strike>
