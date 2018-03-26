@@ -3,6 +3,8 @@ final-project-nextgenproductions2 created by GitHub Classroom
 # To do 
 
 - <strike>Get potentiometer</strike>
-- Debug / add explanatory comments / fix makefile
-- Fritzing diagram
+- <strike>Debug</strike>
+- <strike>add explanatory comments</strike> 
+- <strike>fix makefile</strike>
+- <strike>Fritzing diagram</strike>
 - <strike>Write up</strike>
