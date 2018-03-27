@@ -37,7 +37,7 @@ main(int argc, char **argv) {
     else if(argc == 2){
         device = "/dev/tty.usbmodem1411";
         file = argv[1];
-        mapfile = open(file, O_RDONLY);
+        mapfile = open(file, O_RDWR | O_NOCTTY | O_NDELAY);
     }
     else {
         printf("Usage: ./part2.o [device] [filename]");
