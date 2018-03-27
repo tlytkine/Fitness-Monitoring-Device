@@ -10,13 +10,13 @@ CC = gcc
 CFLAGS = -g -Wall -pedantic -Werror -Wextra 
 
 # name of executable file 
-EXEC = part1
+EXEC = part2
 # name of c file to compile 
-FILE = part1.c
+FILE = part2.c
 
 all: $(EXEC)
 # generates executable file part1 
-$(TARGET): $(TARGET).c
+$(EXEC): $(EXEC).c
 		$(CC) $(CFLAGS) -o $(EXEC) $(FILE)
 # command to generate executable file 
 clean:
