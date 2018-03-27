@@ -1,4 +1,4 @@
-// Libraries needed to make code work properly 
+// Libraries needed to make code work properly
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -7,7 +7,7 @@
 #include <string.h>
 #include <termios.h>
 #include <stdlib.h>
-// Specifies what to return / print upon an error 
+// Specifies what to return / print upon an error
 #define ERROR(x) \
     do { \
         perror(x); \
@@ -17,20 +17,31 @@
 
 int init_tty(int fd); // sets the baud rate / configures serial port settings
 int main_loop(int fd); // contains program with prompt to send commands from terminal to arduino
-int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino 
+int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino
 
 int
 main(int argc, char **argv) {
    int fd;
-    char *device; 
+    char *device;
     int ret;
+    char *file;
+    int mapfile;
 
 
     // Connection established to port on /dev/tty.usbmodem1411
-    if (argc == 2) {
+    if (argc == 3) {
         device = argv[1];
-    } else {
+        file = argv[2];
+        mapfile = open(file, O_RDONLY);
+    }
+    else if(argc == 2){
         device = "/dev/tty.usbmodem1411";
+        file = argv[1];
+        mapfile = open(file, O_RDONLY);
+    }
+    else {
+        printf("Usage: ./part2.o [device] [filename]");
+        exit(1);
     }
 
     /*
@@ -61,59 +72,59 @@ done:
 int
 main_loop(int fd) {
 
-    char *buffer; // buffer which input string is read into 
-    size_t bytes_in; // number of bytes read 
-    size_t buffer_size = 128; // size of buffer made to 128 to assure functionality when entering multiple commands 
-    // size_t characters; 
-    buffer = (char *)malloc(buffer_size * sizeof(char)); // memory allocated for buffer 
+    char *buffer; // buffer which input string is read into
+    size_t bytes_in; // number of bytes read
+    size_t buffer_size = 128; // size of buffer made to 128 to assure functionality when entering multiple commands
+    // size_t characters;
+    buffer = (char *)malloc(buffer_size * sizeof(char)); // memory allocated for buffer
     if(buffer == NULL){
         perror("Unable to allocate buffer");
         exit(1);
     }
         // Set of strings that specify valid commands that can be entered
-        // These strings are compared to the buffer input 
+        // These strings are compared to the buffer input
         // The labeled numbers correspond to the options labeled within
         // the program loop.
         char *showX = "showX\n"; // 1
-        char *pause = "pause\n"; // 2 
-        char *resume = "resume\n"; // 3 
-        char *exit = "exit\n"; // 4 
-        char *help = "help\n"; // 5 
-        // Set of strings which are sent to the arduino 
-        // These strings are compared in the arduino code 
-        // and the corresponding function is performed. 
+        char *pause = "pause\n"; // 2
+        char *resume = "resume\n"; // 3
+        char *exit = "exit\n"; // 4
+        char *help = "help\n"; // 5
+        // Set of strings which are sent to the arduino
+        // These strings are compared in the arduino code
+        // and the corresponding function is performed.
         char *command1 = "shX\r";
         char *command2 = "PAU\r";
         char *command3 = "RES\r";
 
         // variable used in order to keep program running in a loop
         int running = 1;
-        // return value 
+        // return value
         int ret;
-        // program loop 
+        // program loop
         while(running!=0){
             // *  - Prompt user for input
             printf("Please input one of the following options\n");
-            printf("showX\n"); // 1 
-            printf("pause\n"); // 2 
-            printf("resume\n"); // 3 
-            printf("exit\n"); // 4 
-            printf("help\n"); // 5 
+            printf("showX\n"); // 1
+            printf("pause\n"); // 2
+            printf("resume\n"); // 3
+            printf("exit\n"); // 4
+            printf("help\n"); // 5
             printf("\n");
             // gets number of bytes in and puts them into the buffer
             bytes_in = getline(&buffer,&buffer_size,stdin);
             printf("\n");
-            // prints number of characters read 
+            // prints number of characters read
             printf("%zu characters were read.\n",bytes_in);
-            // prints command that was typed 
+            // prints command that was typed
             printf("You typed: %s\n",buffer);
 
-            
+
 
              int n; // number of bytes sent to arduino (greater than 0 if successful)
              // Descriptions of what each command should do shown
 
-            /* showX: : Set the output device to show X as the current heart rate 
+            /* showX: : Set the output device to show X as the current heart rate
             instead of the current real-time value.
             This will be useful while debugging.
             */
@@ -121,14 +132,14 @@ main_loop(int fd) {
             the size of the string which was read in is used in order to send
             the proper number of bytes to the arduino.
 
-            ret is set equal to either 0 or 1. 
-            0 means that a valid number of bytes was read in 
+            ret is set equal to either 0 or 1.
+            0 means that a valid number of bytes was read in
             1 means that nothing was read in  */
             if(strcmp(buffer,showX)==0){
                 size_t c1 = strlen(command1);
                 n = send_cmd(fd,command1,c1);
                 if(n>0){
-                    ret = 0; 
+                    ret = 0;
                 }
                 else {
                     ret = 1;
@@ -137,7 +148,7 @@ main_loop(int fd) {
 
 
 
-            /*pause: Pause the output and keep the display device showing the 
+            /*pause: Pause the output and keep the display device showing the
             current reading */
             if(strcmp(buffer,pause)==0){
                 size_t c2 = strlen(command2);
@@ -150,7 +161,7 @@ main_loop(int fd) {
                 }
             }
 
-            /*resume: Show the real-time heart rate on the display device. 
+            /*resume: Show the real-time heart rate on the display device.
             This should be the default mode of the system. */
             if(strcmp(buffer,resume)==0){
                 size_t c3 = strlen(command3);
@@ -164,7 +175,7 @@ main_loop(int fd) {
             }
 
 
-            // Displays list of available commands 
+            // Displays list of available commands
             if(strcmp(buffer,help)==0){
                 printf("Commands available: \n");
                 printf("1. showX : Sets LCD to show X as current heart rate instead of the current real-time value. \n");
@@ -175,23 +186,23 @@ main_loop(int fd) {
                 ret = 0;
             }
 
-            // exit: Exits the host program. 
+            // exit: Exits the host program.
             if(strcmp(buffer,exit)==0){
                 printf("Exiting program...\n");
                 ret = 0;
-                running = 0; // exits loop upon user entering exit 
+                running = 0; // exits loop upon user entering exit
             }
-      
+
     }
         return ret;
 }
-// function that sends command 
+// function that sends command
 int
 send_cmd(int fd, char *cmd, size_t len) {
-    int count; // number of bytes received as a response from the arduino 
-    char buf[5]; // buffer to store response from arduino 
-    // this if statement sends the command to the arduino and 
-    // returns an error upon failure 
+    int count; // number of bytes received as a response from the arduino
+    char buf[5]; // buffer to store response from arduino
+    // this if statement sends the command to the arduino and
+    // returns an error upon failure
     if (write(fd, cmd, len) == -1) {
         perror("serial-write");
         return -1;
@@ -202,7 +213,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     sleep(1);
     // response read in, number of bytes read set equal to count
     count = read(fd, &buf, 5);
-    // Error if read fails or no response is received 
+    // Error if read fails or no response is received
     if (count == -1) {
         perror("serial-read");
         return -1;
@@ -219,13 +230,13 @@ send_cmd(int fd, char *cmd, size_t len) {
 int
 init_tty(int fd) {
     struct termios tty;
-    
+
 
     // * Configure the serial port.
     // * First, get a reference to options for the tty
     cfsetospeed(&tty, (speed_t)B9600);
 
-    
+
     memset(&tty, 0, sizeof(tty));
     if (tcgetattr(fd, &tty) == -1) {
         perror("tcgetattr");
