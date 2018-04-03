@@ -35,7 +35,7 @@ main(int argc, char **argv) {
         mapfile = open(file, O_RDONLY);
     }
     else if(argc == 2){
-        device = "/dev/tty.usbmodem1411";
+        device = "/dev/tty.usbmodem1421";
         file = argv[1];
         mapfile = open(file, O_RDONLY);
     }

@@ -37,7 +37,7 @@ main(int argc, char **argv) {
     if (argc >= 2) {
         device = argv[1];
     } else {
-        device = "/dev/ttyACM0";
+        device = "/dev/tty.usbmodem1421";
     }
 
     /*
@@ -64,7 +64,7 @@ main(int argc, char **argv) {
     }
 
     // TODO: Open output file for writing (use 'path' as filename)
-    FILE *output = fopen(path, "w");
+    output = fopen(path, "w");
 
     /* Configure settings on the serial port */
     if (init_tty(serial_fd) == -1) {
@@ -101,12 +101,13 @@ main_loop(int serial_fd, FILE *output) {
      */
      int i;
      for(i = 0; i < BUFFER_LEN; i++){
-       if(buf[i] != "\n"){
-         fputc(output, buf[i]);
+       if(buf[i]!='\n'){
+         fputc(buf[i], output);
 
        }
      }
-     fputc(output, " ");
+     char x = ' ';
+     fputc(x, output);
 
 
     return 0;
@@ -175,4 +176,5 @@ init_tty(int serial_fd) {
         perror("tcsetattr");
         return -1;
     }
+    return 0;
 }

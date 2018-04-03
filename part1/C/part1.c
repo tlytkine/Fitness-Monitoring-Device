@@ -30,7 +30,7 @@ main(int argc, char **argv) {
     if (argc == 2) {
         device = argv[1];
     } else {
-        device = "/dev/tty.usbmodem1411";
+        device = "/dev/tty.usbmodem1421";
     }
 
     /*

@@ -139,12 +139,7 @@ handle_get(char *key, char **response) {
     hash = hash_key(key);
     node = search_bucket(ht[hash], key);
     if (node) {
-<<<<<<< HEAD
         sprintf(*response, "%s\n",node->value);
-=======
-        // TODO: return the contents of the node
-        sprintf(*response, "%s\n", node->value);
->>>>>>> b279cde73954bef60224753d120bef8ee628816c
     } else {
         sprintf(*response, "NOT FOUND\n");
     }
@@ -169,11 +164,7 @@ handle_set(char *key, char *value, char **response) {
     node = search_bucket(ht[hash], key);
     if (node) {
         // TODO set the value of the node
-<<<<<<< HEAD
         strcpy(node->value,value);
-=======
-        strcpy(node->value, value);
->>>>>>> b279cde73954bef60224753d120bef8ee628816c
         sprintf(*response, "ok\n");
     } else {
         sprintf(*response, "NOT FOUND\n");
