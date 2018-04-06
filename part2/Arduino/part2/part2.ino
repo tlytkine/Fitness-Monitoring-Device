@@ -30,6 +30,7 @@ String command; // String that reads in command from terminal
 String showX = "shX\r"; // string for showX command 
 String pause = "PAU\r"; // string for pause command 
 String resume_var = "RES\r"; // string for resume command 
+String write_var = "WRT\r";
 
 // Volatile Variables, used in the interrupt service routine!
 volatile int BPM;                   // int that holds raw Analog in 0. updated every 2mS
@@ -60,9 +61,9 @@ void setup(){
 void loop(){
 
     if(paused==false){ // if no terminal commands received then proceed 
-      Serial.print(BPM); // writes BPM stored to serial port 
-      Serial.print("\n");
-      Serial.flush();
+      // Serial.write(BPM); // writes BPM stored to serial port 
+      // Serial.write("\n");
+      // Serial.flush();
       lcd.clear(); // clears LCD 
       lcd.setCursor(0,0); // sets the cursor to the top left 
       lcd.print("BPM: "); // prints "BPM: " in the first row 
@@ -107,9 +108,9 @@ void loop(){
       lcd.write("BPM: ");
       lcd.setCursor(0,1);
       lcd.print("X");
-      Serial.print(BPM);
-      Serial.print("\n");
-      Serial.flush();
+     // Serial.write(BPM);
+     // Serial.write("\n");
+     // Serial.flush();
       delay(100);
     }
     // pause will keep the current BPM displayed on the screen 
@@ -121,8 +122,14 @@ void loop(){
       lcd.write("BPM: ");
       lcd.setCursor(0,1);
       lcd.print(BPM);
-      Serial.print(BPM);
-      Serial.print("\n");
+      // Serial.write(BPM);
+      // Serial.write("\n");
+      // Serial.flush();
+      delay(100);
+    }
+    else if(command.equals(write_var)){
+      Serial.write(BPM);
+      Serial.write("\n");
       Serial.flush();
       delay(100);
     }

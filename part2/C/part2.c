@@ -15,9 +15,14 @@
         goto done; \
     } while (0)
 
+
+
+
+
 int init_tty(int fd); // sets the baud rate / configures serial port settings
 int main_loop(int fd); // contains program with prompt to send commands from terminal to arduino
 int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino
+int readline(int serial_fd, char *buf); 
 
 int
 main(int argc, char **argv) {
@@ -35,7 +40,7 @@ main(int argc, char **argv) {
         mapfile = open(file, O_RDONLY);
     }
     else if(argc == 2){
-        device = "/dev/tty.usbmodem1421";
+        device = "/dev/tty.usbmodem1411";
         file = argv[1];
         mapfile = open(file, O_RDONLY);
     }
@@ -88,14 +93,17 @@ main_loop(int fd) {
         char *showX = "showX\n"; // 1
         char *pause = "pause\n"; // 2
         char *resume = "resume\n"; // 3
-        char *exit = "exit\n"; // 4
-        char *help = "help\n"; // 5
+        char *write = "write\n"; // 4
+        char *exit = "exit\n"; 
+        char *help = "help\n"; 
+
         // Set of strings which are sent to the arduino
         // These strings are compared in the arduino code
         // and the corresponding function is performed.
         char *command1 = "shX\r";
         char *command2 = "PAU\r";
         char *command3 = "RES\r";
+        char *command4 = "WRT\r";
 
         // variable used in order to keep program running in a loop
         int running = 1;
@@ -108,8 +116,9 @@ main_loop(int fd) {
             printf("showX\n"); // 1
             printf("pause\n"); // 2
             printf("resume\n"); // 3
-            printf("exit\n"); // 4
-            printf("help\n"); // 5
+            printf("write\n"); // 4 
+            printf("exit\n"); // 5
+            printf("help\n"); // 6
             printf("\n");
             // gets number of bytes in and puts them into the buffer
             bytes_in = getline(&buffer,&buffer_size,stdin);
@@ -174,6 +183,17 @@ main_loop(int fd) {
                 }
             }
 
+            if(strcmp(buffer,write)==0){
+                size_t c4 = strlen(command4);
+                n = send_cmd(fd,command4,c4);
+                if(n>0){
+                    ret = 0;
+                }
+                else {
+                    ret = 1;
+                }
+            }
+
 
             // Displays list of available commands
             if(strcmp(buffer,help)==0){
@@ -181,8 +201,9 @@ main_loop(int fd) {
                 printf("1. showX : Sets LCD to show X as current heart rate instead of the current real-time value. \n");
                 printf("2. pause : Pauses the output and keeps the display device showing the current reading. \n");
                 printf("3. resume : Shows the real-time heart rate on the display device. (Default mode of system) \n");
-                printf("4. exit : Exits the host program \n");
-                printf("5. help : Self explanatory \n");
+                printf("4. write : Sends arduino command to write BPM. \n");
+                printf("5. exit : Exits the host program \n");
+                printf("6. help : Self explanatory \n");
                 ret = 0;
             }
 
@@ -200,6 +221,7 @@ main_loop(int fd) {
 int
 send_cmd(int fd, char *cmd, size_t len) {
     int count; // number of bytes received as a response from the arduino
+    int BPM;
     char buf[5]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
@@ -212,18 +234,28 @@ send_cmd(int fd, char *cmd, size_t len) {
     // Serial is slow...
     sleep(1);
     // response read in, number of bytes read set equal to count
-    count = read(fd, &buf, 5);
+    count = readline(fd, buf);
     // Error if read fails or no response is received
     if (count == -1) {
         perror("serial-read");
         return -1;
-    } else if (count == 0) {
+    } 
+    /*
+    else if (count == 0) {
         fprintf(stderr, "No data returned\n");
         return -1;
     }
+    */
 
     // Responses aka the BPM, Signal, IBI needs to be stored
-    printf("Response: %s\n", buf);
+  //  printf("Response: %s\n", buf);
+    BPM = buf[0];
+    int x = buf[1];
+    if(x!=10){
+        BPM +=buf[1];
+    }
+    printf("BPM: %d\n",BPM);
+
     return count;
 }
 
@@ -285,127 +317,32 @@ init_tty(int fd) {
 }
 
 
-/*
+int readline(int serial_fd, char *buf){
+    int pos, ret;
 
-// * From: https://gist.github.com/marcetcheverry/991042
- 
+    int buffer_size = 5;
+    // Zero out the buffer 
+    memset(buf, 0, buffer_size);
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <string.h>
-
-int main(int argc, const char *argv[])
-{
-    if (argc < 2)
-    {
-        fprintf(stderr, "Need at least one argument to write to the file\n");
-        exit(EXIT_FAILURE);
-    }
-
-    const char *text = argv[1];
-    printf("Will write text '%s'\n", text);
-
-    /* Open a file for writing.
-     *  - Creating the file if it doesn't exist.
-     *  - Truncating it to 0 size if it already exists. (not really needed)
-     *
-     * Note: "O_WRONLY" mode is not sufficient when mmaping.
-     */
-/*
-    FILE* fileName;
-
-    fileName = fopen("newFile.txt","w");
-
-    const char *filepath = "/Users/timothylytkine/Desktop/newFile.txt";
-
-    int fd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
-
-    if (fd == -1)
-    {
-        perror("Error opening file for writing");
-        exit(EXIT_FAILURE);
-    }
-
-    // TODO: Explain to a TA why the code below is necessary (from here to "End"):
-
-    // Stretch the file size to the size of the (mmapped) array of char
-    size_t textsize = strlen(text) + 1; // + \0 null character
-
-    if (lseek(fd, textsize-1, SEEK_SET) == -1)
-    {
-        close(fd);
-        perror("Error calling lseek() to 'stretch' the file");
-        exit(EXIT_FAILURE);
-    }
-
-    /* Something needs to be written at the end of the file to
-     * have the file actually have the new size.
-     * Just writing an empty string at the current file position will do.
-     *
-     * Note:
-     *  - The current position in the file is at the end of the stretched
-     *    file due to the call to lseek().
-     *  - An empty string is actually a single '\0' character, so a zero-byte
-     *    will be written at the last byte of the file.
-     */
-/*
-
-    if (write(fd, "", 1) == -1)
-    {
-        close(fd);
-        perror("Error writing last byte of the file");
-        exit(EXIT_FAILURE);
-    }
-
-    // End
-
-    // Now the file is ready to be mmapped.
-    char *map = mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (map == MAP_FAILED)
-    {
-        close(fd);
-        perror("Error mmapping the file");
-        exit(EXIT_FAILURE);
-    }
-
-    // TODO: Write the input text to the map
-    for(size_t i = 0; i < textsize; i++)
-    {   
-        map[i] = text[i];
-        if(i == textsize-1){
-            printf("Text written to file.\n");
+    // Read in one character at a time until we get a newline 
+    pos = 0;
+    while(pos < (buffer_size - 1)){
+        ret = read(serial_fd, buf + pos, 1);
+        if(ret == -1) perror("read");
+        else if (ret > 0){
+            if(buf[pos] == '\n') break;
+            pos += ret;
         }
     }
 
-
-
-
-
-    // TODO: Save the changes we made to the mmap back to the file
-        if(msync(map,textsize,MS_SYNC)==-1)
-    {
-        perror("File not synced to disk.");
+    // Make sure theres something in the buffer 
+    // If not try again
+    if(strlen(buf)==0){
+        printf("Empty buffer.");
+        return readline(serial_fd,buf);
     }
-
-
-    // TODO: Unmap the memory
-
-    if(munmap(map, textsize)==-1)
-    {
-        close(fd);
-        perror("Couldn't unmap memory");
-        exit(EXIT_FAILURE);
-    }
-
-    // Un-mmaping doesn't close the file, so we still need to do that.
-    close(fd);
-
     return 0;
+
 }
-*/
+
 
