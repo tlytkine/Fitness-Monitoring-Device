@@ -16,7 +16,7 @@
     } while (0)
 
 
-
+//int[96][5] hist;
 
 
 int init_tty(int fd); // sets the baud rate / configures serial port settings
@@ -29,20 +29,21 @@ main(int argc, char **argv) {
    int fd;
     char *device;
     int ret;
-    char *file;
-    int mapfile;
-
+    //char *file;
+    //int mapfile;
+   
 
     // Connection established to port on /dev/tty.usbmodem1411
     if (argc == 3) {
         device = argv[1];
-        file = argv[2];
-        mapfile = open(file, O_RDONLY);
+        //file = argv[2];
+        //mapfile = open(file, O_RDONLY);
     }
     else if(argc == 2){
-        device = "/dev/tty.usbmodem1411";
-        file = argv[1];
-        mapfile = open(file, O_RDONLY);
+        //device = "/dev/tty.usbmodem1411";
+	//device = "/dev/ttyACM0";
+	device = argv[1];
+        //mapfile = open(file, O_RDONLY);
     }
     else {
         printf("Usage: ./part2.o [device] [filename]");
@@ -344,5 +345,113 @@ int readline(int serial_fd, char *buf){
     return 0;
 
 }
+
+/*int writeMap(){
+	const char *filepath = "/tmp/mmapped.bin";
+	int mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+
+    if (mapfd == -1)
+    {
+        perror("Error opening file for writing");
+		return -1;
+        exit(EXIT_FAILURE);
+    }
+	size_t textsize = 480; // + \0 null character
+
+    if (lseek(mapfd, textsize-1, SEEK_SET) == -1)
+    {
+        close(mapfd);
+        perror("Error calling lseek() to 'stretch' the file");
+		return -1;
+        exit(EXIT_FAILURE);
+    }
+
+    * Something needs to be written at the end of the file to
+     * have the file actually have the new size.
+     * Just writing an empty string at the current file position will do.
+     *
+     * Note:
+     *  - The current position in the file is at the end of the stretched
+     *    file due to the call to lseek().
+     *  - An empty string is actually a single '\0' character, so a zero-byte
+     *    will be written at the last byte of the file.
+     
+
+    if (write(mapfd, "", 1) == -1)
+    {
+        close(mapfd);
+        perror("Error writing last byte of the file");
+		return -1;
+        exit(EXIT_FAILURE);
+    }
+
+
+    // Now the file is ready to be mmapped.
+    char *map = mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, mapfd, 0);
+    if (map == MAP_FAILED)
+    {
+        close(mapfd);
+        perror("Error mmapping the file");
+		return -1;
+        exit(EXIT_FAILURE);
+    }
+
+    for (size_t i = 0; i < 96; i++)
+    {
+       
+    }
+
+    // Write it now to disk
+    if (msync(map, textsize, MS_SYNC) == -1)
+    {
+        perror("Could not sync the file to disk");
+    }
+
+    // Don't forget to free the mmapped memory
+    if (munmap(map, textsize) == -1)
+    {
+        close(mapfd);
+        perror("Error un-mmapping the file");
+		return -1;
+        exit(EXIT_FAILURE);
+    }
+
+    // Un-mmaping doesn't close the file, so we still need to do that.
+    close(mapfd);
+
+	
+	return 0;
+}
+
+int readMap(){
+	int ret = 0;
+
+	const char *filepath = "/tmp/mmapped.bin";
+
+    int mapfd = open(filepath, O_RDONLY, (mode_t)0600);
+
+    if (mapfd == -1)
+    {
+        perror("Error opening file for writing");
+        exit(EXIT_FAILURE);
+    }
+
+    struct stat fileInfo = {0};
+
+    if (fstat(mapfd, &fileInfo) == -1)
+    {
+        perror("Error getting the file size");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fileInfo.st_size == 0)
+    {
+        fprintf(stderr, "Error: File is empty, nothing to do\n");
+        exit(EXIT_FAILURE);
+    }
+
+
+	return ret;
+}*/
 
 
