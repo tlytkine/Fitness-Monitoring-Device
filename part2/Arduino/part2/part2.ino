@@ -25,13 +25,13 @@ https://github.com/WorldFamousElectronics/PulseSensor_Amped_Arduino/blob/master/
 #define SERIAL_PLOTTER  2 
 
 
-byte *secondGet;
-byte *minuteGet;
-byte *hourGet;
-byte *dayOfWeekGet;
-byte *dayOfMonthGet;
-byte *monthGet;
-byte *yearGet;
+byte secondGet;
+byte minuteGet;
+byte hourGet;
+byte dayOfWeekGet;
+byte dayOfMonthGet;
+byte monthGet;
+byte yearGet;
 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
@@ -110,7 +110,7 @@ void loop(){
 
 
 
-      readDS3231time(secondGet,minuteGet,hourGet,dayOfWeekGet,dayOfMonthGet,monthGet,yearGet);
+      readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
       delay(1000); // every second
     if(paused==false){ // if no terminal commands received then proceed 
       // Serial.write(BPM); // writes BPM stored to serial port 
@@ -181,9 +181,12 @@ void loop(){
     }
     else if(command.equals(write_var)){
       Serial.write(BPM);
+      Serial.write(hourGet);
+      Serial.write(minuteGet);
       Serial.write("\n");
       Serial.flush();
       delay(100);
+
       // current time stored here
       // send these: secondGet,minuteGet,hourGet,dayOfWeekGet,dayOfMonthGet,monthGet,yearGet
       // to C and mmap / plot histogram somehow?
