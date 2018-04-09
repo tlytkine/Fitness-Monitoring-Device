@@ -16,11 +16,10 @@ https://github.com/WorldFamousElectronics/PulseSensor_Amped_Arduino/blob/master/
  ----------------------       ----------------------  ----------------------
 */
 #include <LiquidCrystal.h> // Library used to interact with LCD 
-#include <DS1307RTC.h>
-#include <TimeLib.h>
+
 #include "Wire.h"
 #define DS3231_I2C_ADDRESS 0x68
-#include <Time.h>
+
 #define PROCESSING_VISUALIZER 1 
 #define SERIAL_PLOTTER  2 
 
@@ -82,6 +81,7 @@ void setup(){
   Serial.begin(9600);             // baud rate of 9600 
   interruptSetup();                 // sets up to read Pulse Sensor signal every 2mS
   lcd.begin(16,2); // configures LCD with 16 columns and 2 rows 
+  
   bool parse = false;
   bool config = false;
 
@@ -90,15 +90,23 @@ void setup(){
 
   const char *system_date = __DATE__;
   const char *system_time = __TIME__;
+      
+
 
   // might need to be byte *
-  byte secondSet = system_time[6] + system_time[7];
-  byte minuteSet = system_time[3] + system_time[4];
-  byte hourSet = system_time[0] + system_time[1];
-  byte dayOfWeekSet = 1; // 1 Sunday, 7 Saturday 
+  byte secondSet = ((int)system_time[6]-48)*10 + (int)system_time[7]-48;
+  byte minuteSet = ((int)system_time[3]-48)*10 + (int)system_time[4]-48;
+  byte hourSet = ((int)system_time[0]-48)*10 + (int)system_time[1]-48;
+  byte dayOfWeekSet = 2; // 1 Sunday, 7 Saturday 
   byte dayOfMonthSet = system_time[5];
   byte monthSet = 04;
   byte yearSet = 18;
+  /*lcd.print(system_time);
+  lcd.print(" ");
+  lcd.print(hourSet);
+  lcd.print(minuteSet);
+  lcd.print(secondSet);
+  */
 
   setDS3231time(secondSet,minuteSet,hourSet,dayOfWeekSet,dayOfMonthSet,monthSet,yearSet);
 }
@@ -106,12 +114,9 @@ void setup(){
 
 void loop(){
 
-    // displayTime(); // display the real-time clock data on the Serial Monitor,
 
-
-
-      readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
-      delay(1000); // every second
+      
+      delay(500); // every second
     if(paused==false){ // if no terminal commands received then proceed 
       // Serial.write(BPM); // writes BPM stored to serial port 
       // Serial.write("\n");
@@ -149,6 +154,7 @@ void loop(){
         lcd.write("BPM: ");
         lcd.setCursor(0,1);
         lcd.print(BPM);
+        Serial.write("\n");
         delay(100);
     }
     // showX command prints X to the screen instead of the current BPM
@@ -161,7 +167,7 @@ void loop(){
       lcd.setCursor(0,1);
       lcd.print("X");
      // Serial.write(BPM);
-     // Serial.write("\n");
+      Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
      // Serial.flush();
       delay(100);
     }
@@ -175,16 +181,18 @@ void loop(){
       lcd.setCursor(0,1);
       lcd.print(BPM);
       // Serial.write(BPM);
-      // Serial.write("\n");
+      Serial.write("\n");
       // Serial.flush();
       delay(100);
     }
     else if(command.equals(write_var)){
-      // Serial.write(BPM);
+      readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
+      Serial.write(BPM);
       Serial.write(hourGet);
-      // Serial.write(minuteGet);
+      Serial.write(minuteGet);
+      Serial.write(secondGet);
       Serial.write("\n");
-      Serial.flush();
+      //Serial.flush();
       delay(100);
 
       // current time stored here
@@ -235,57 +243,7 @@ byte *year)
   *month = bcdToDec(Wire.read());
   *year = bcdToDec(Wire.read());
 }
-void displayTime()
-{
-  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
-  // retrieve data from DS3231
-  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month,
-  &year);
-  // send it to the serial monitor
-  Serial.print(hour, DEC);
-  // convert the byte variable to a decimal number when displayed
-  Serial.print(":");
-  if (minute<10)
-  {
-    Serial.print("0");
-  }
-  Serial.print(minute, DEC);
-  Serial.print(":");
-  if (second<10)
-  {
-    Serial.print("0");
-  }
-  Serial.print(second, DEC);
-  Serial.print(" ");
-  Serial.print(dayOfMonth, DEC);
-  Serial.print("/");
-  Serial.print(month, DEC);
-  Serial.print("/");
-  Serial.print(year, DEC);
-  Serial.print(" Day of week: ");
-  switch(dayOfWeek){
-  case 1:
-    Serial.println("Sunday");
-    break;
-  case 2:
-    Serial.println("Monday");
-    break;
-  case 3:
-    Serial.println("Tuesday");
-    break;
-  case 4:
-    Serial.println("Wednesday");
-    break;
-  case 5:
-    Serial.println("Thursday");
-    break;
-  case 6:
-    Serial.println("Friday");
-    break;
-  case 7:
-    Serial.println("Saturday");
-    break;
-  }
-}
+
+
 
 

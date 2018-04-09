@@ -26,7 +26,7 @@ int readline(int serial_fd, char *buf);
 
 
 
-typedef struct {
+/*typedef struct {
     int BPM;
     int minute;
     int hour;
@@ -37,7 +37,7 @@ typedef struct {
 typedef struct {
     struct histogramData;
     int timeInterval;
-} histogram;
+} histogram;*/
 
 
 
@@ -123,6 +123,10 @@ main_loop(int fd) {
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
 
+
+		
+		
+		
         // variable used in order to keep program running in a loop
         int running = 1;
         // return value
@@ -239,8 +243,8 @@ main_loop(int fd) {
 int
 send_cmd(int fd, char *cmd, size_t len) {
     int count; // number of bytes received as a response from the arduino
-    int BPM;
-    char buf[5]; // buffer to store response from arduino
+    char BPM;
+    char buf[10]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
     if (write(fd, cmd, len) == -1) {
@@ -268,11 +272,14 @@ send_cmd(int fd, char *cmd, size_t len) {
     // Responses aka the BPM, Signal, IBI needs to be stored
   //  printf("Response: %s\n", buf);
     BPM = buf[0];
-   // int x = buf[1];
-   // if(x!=10){
-     //   BPM +=buf[1];
-    //}
-    printf("BPM: %d\n",BPM);
+	BPM -= '0';
+    char hour = buf[1];
+   	char minute = buf[2];
+	char second = buf[3];
+    printf("BPM: %u", (unsigned int)BPM);
+	printf("%d:", (int)hour);
+	printf("%d:", (int)minute);
+	printf("%d", (int)second);
 
     // variable for minutes
     // variable for hours 
@@ -343,7 +350,7 @@ init_tty(int fd) {
 int readline(int serial_fd, char *buf){
     int pos, ret;
 
-    int buffer_size = 5;
+    int buffer_size = 10;
     // Zero out the buffer 
     memset(buf, 0, buffer_size);
 
