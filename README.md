@@ -7,13 +7,14 @@ final-project-nextgenproductions2 created by GitHub Classroom
 * <strike>Figure out outlier readings, flash warning on LCD when outlier reading comes up</strike> 
 * <strike>Make print method for histogram structure</strike>
 * <strike>Fix print histogram method to actually print histogram</strike>
+* <strike>Turn the 2D into a 1D array before mmaping </strike>
+* <strike>New heart rate sensor </strike>
 * Figure out why write pauses up randomly 
 * Document explaining communication protocol / schema (check project description)
 https://docs.google.com/document/d/1JgkWabq6OqkZygHLXvkFEupfQqVzrtjhvvwC7WoxdOc/edit?usp=sharing
 * Fritzing 
 * Use UNC mmap video to mmap histogram structure into virtual memory space
-* Turn the 2D into a 1D array before mmaping 
-* New heart rate sensor 
+
 * Make sure high and low commands display warnings on LCD 
 * Make sure requesting heart rate every second works 
 
