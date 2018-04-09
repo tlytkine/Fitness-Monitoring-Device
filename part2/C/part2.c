@@ -19,6 +19,7 @@
 
 clock_t Pre, next;
 int hist[96][5]; // histogram to store values
+int histStore[480]; // 1D array to mmap
 
 
 int init_tty(int fd); // sets the baud rate / configures serial port settings
@@ -91,6 +92,7 @@ void printHist(int hist[96][5]){
             printf("15 min interval 0 to 96: %d \n",x);
             printf("0 through 5 BPM value: %d \n",y);
             printf("Frequency: %d \n",hist[x][y]);
+            printf("\n");
         }
     }
 }
@@ -99,7 +101,7 @@ int
 main_loop(int fd) {
 
     char *buffer; // buffer which input string is read into
-    size_t bytes_in; // number of bytes read
+  //  size_t bytes_in; // number of bytes read
     size_t buffer_size = 128; // size of buffer made to 128 to assure functionality when entering multiple commands
     // size_t characters;
     buffer = (char *)malloc(buffer_size * sizeof(char)); // memory allocated for buffer
@@ -114,7 +116,6 @@ main_loop(int fd) {
         char *showX = "showX\n"; // 1
         char *pause = "pause\n"; // 2
         char *resume = "resume\n"; // 3
-        char *write = "write\n"; // 4
         char *exit = "exit\n"; 
         char *help = "help\n"; 
 
@@ -137,23 +138,26 @@ main_loop(int fd) {
         // return value
         int ret;
         // program loop
+
+
         while(running!=0){
             // *  - Prompt user for input
+            /*
             printf("Please input one of the following options\n");
             printf("showX\n"); // 1
             printf("pause\n"); // 2
-            printf("resume\n"); // 3
-            printf("write\n"); // 4 
-            printf("exit\n"); // 5
-            printf("help\n"); // 6
+            printf("resume\n"); 
+            printf("exit\n"); 
+            printf("help\n"); 
             printf("\n");
+            */
             // gets number of bytes in and puts them into the buffer
-            bytes_in = getline(&buffer,&buffer_size,stdin);
-            printf("\n");
+        //    bytes_in = getline(&buffer,&buffer_size,stdin);
+       //     printf("\n");
             // prints number of characters read
-            printf("%zu characters were read.\n",bytes_in);
+        //    printf("%zu characters were read.\n",bytes_in);
             // prints command that was typed
-            printf("You typed: %s\n",buffer);
+       //     printf("You typed: %s\n",buffer);
 
 
 
@@ -210,27 +214,16 @@ main_loop(int fd) {
                 }
             }
 
-            if(strcmp(buffer,write)==0){
-                size_t c4 = strlen(command4);
-                n = send_cmd(fd,command4,c4);
-                if(n>0){
-                    ret = 0;
-                }
-                else {
-                    ret = 1;
-                }
-            }
 
 
             // Displays list of available commands
             if(strcmp(buffer,help)==0){
                 printf("Commands available: \n");
-                printf("1. showX : Sets LCD to show X as current heart rate instead of the current real-time value. \n");
-                printf("2. pause : Pauses the output and keeps the display device showing the current reading. \n");
-                printf("3. resume : Shows the real-time heart rate on the display device. (Default mode of system) \n");
-                printf("4. write : Sends arduino command to write BPM. \n");
-                printf("5. exit : Exits the host program \n");
-                printf("6. help : Self explanatory \n");
+                printf("showX : Sets LCD to show X as current heart rate instead of the current real-time value. \n");
+                printf("pause : Pauses the output and keeps the display device showing the current reading. \n");
+                printf("resume : Shows the real-time heart rate on the display device. (Default mode of system) \n");
+                printf("exit : Exits the host program \n");
+                printf("help : Self explanatory \n");
                 ret = 0;
             }
 
@@ -241,13 +234,23 @@ main_loop(int fd) {
                 running = 0; // exits loop upon user entering exit
             }
 
+
+                // Requests heart rate value from Arduino every second 
+                // (sends command 4 aka write command)
+
+                size_t c4 = strlen(command4);
+                n = send_cmd(fd,command4,c4);
+               // sleep(1);
+
                 // every 10 seconds print histogram
                 next = clock();
                 if((next - Pre) / CLOCKS_PER_SEC >= 10){
                     Pre = clock();
                     printHist(hist);
 
+
                 }
+             
 
     }
         return ret;
@@ -260,7 +263,7 @@ int
 send_cmd(int fd, char *cmd, size_t len) {
     int count; // number of bytes received as a response from the arduino
     char BPMchar;
-    char buf[10]; // buffer to store response from arduino
+    char buf[64]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
     if (write(fd, cmd, len) == -1) {
@@ -309,9 +312,15 @@ send_cmd(int fd, char *cmd, size_t len) {
     int firstIndex = -1;
 
 
-    int BPM = (int) BPMchar;
+    int BPM = BPMchar - '0';
 
-        // 1st index is hour
+    printf("\n");
+    printf("hourVar: %d\n",hourVar);
+    printf("minuteVar: %d\n",minuteVar);
+    printf("BPM: %d\n",BPM);
+    printf("\n");
+
+    // 1st index is hour
     // if minutes are between 0 and 15 first index is equal to hour 
     // between 15 and 30 equal to hour + 1 
     // between 30 and 45 equal to hour + 2 
@@ -340,37 +349,33 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     // Hour is first interval
     if((0 >= BPM)&&(BPM <= 40)){
-    //  2nd index is 0 
+        //  2nd index is 0 
         secondIndex = 0;
-    // outlier reading (heart rate too low)
-    // sends LOW\r to arduino to print warning to screen
-     // char *low = "LOW\r";
-    // send a command to arduino to print warning to screen 
+        // outlier reading (heart rate too low)
+        // sends LOW\r to arduino to print warning to screen
+        // char *low = "LOW\r";
+        // send a command to arduino to print warning to screen 
         size_t lowCommand = strlen(low);
         send_cmd(fd,low,lowCommand);
-
-        
     }
     else if((41 >= BPM)&&(BPM <= 80)){
-    // 2nd index is 1 
+        // 2nd index is 1 
         secondIndex = 1;
     }
     else if((81 >= BPM)&&(BPM <= 120)){
-    // 2nd index is 2 
+        // 2nd index is 2 
         secondIndex = 2;
     }
     else if((121 >= BPM)&&(BPM <= 160)){
-    // 2nd index is 3 
+        // 2nd index is 3 
         secondIndex = 3;
     }
     else if(BPM >= 160){
-    // 2nd index is 4 
+        // 2nd index is 4 
         secondIndex = 4;
-    // outlier reading 
-    // send a command to arduino to print warning to screen   
-     // char *high = "HIG\r";
-
-
+        // outlier reading 
+        // send a command to arduino to print warning to screen   
+        // char *high = "HIG\r";
         size_t highCommand = strlen(high);
         send_cmd(fd,high,highCommand);  
         
@@ -378,13 +383,8 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     hist[firstIndex][secondIndex]++;
 
-
-
-
-   
-    
-
-
+    int thirdIndex = firstIndex * secondIndex;
+    histStore[thirdIndex]++;
 
 
     return count;
@@ -453,7 +453,7 @@ init_tty(int fd) {
 int readline(int serial_fd, char *buf){
     int pos, ret;
 
-    int buffer_size = 10;
+    int buffer_size = 64;
     // Zero out the buffer 
     memset(buf, 0, buffer_size);
 
@@ -478,7 +478,8 @@ int readline(int serial_fd, char *buf){
 
 }
 
-/*int writeMap(){
+/*
+int writeMap(){
 	const char *filepath = "/tmp/mmapped.bin";
 	int mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
 
