@@ -180,9 +180,9 @@ void loop(){
       delay(100);
     }
     else if(command.equals(write_var)){
-      Serial.write(BPM);
+      // Serial.write(BPM);
       Serial.write(hourGet);
-      Serial.write(minuteGet);
+      // Serial.write(minuteGet);
       Serial.write("\n");
       Serial.flush();
       delay(100);

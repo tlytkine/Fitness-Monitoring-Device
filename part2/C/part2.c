@@ -24,6 +24,23 @@ int main_loop(int fd); // contains program with prompt to send commands from ter
 int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino
 int readline(int serial_fd, char *buf); 
 
+
+
+typedef struct {
+    int BPM;
+    int minute;
+    int hour;
+    
+} histogramData;
+
+
+typedef struct {
+    struct histogramData;
+    int timeInterval;
+} histogram;
+
+
+
 int
 main(int argc, char **argv) {
    int fd;
@@ -251,11 +268,16 @@ send_cmd(int fd, char *cmd, size_t len) {
     // Responses aka the BPM, Signal, IBI needs to be stored
   //  printf("Response: %s\n", buf);
     BPM = buf[0];
-    int x = buf[1];
-    if(x!=10){
-        BPM +=buf[1];
-    }
+   // int x = buf[1];
+   // if(x!=10){
+     //   BPM +=buf[1];
+    //}
     printf("BPM: %d\n",BPM);
+
+    // variable for minutes
+    // variable for hours 
+
+
 
     return count;
 }
