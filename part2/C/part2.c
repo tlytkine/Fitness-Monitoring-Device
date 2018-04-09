@@ -28,14 +28,15 @@ int send_cmd(int fd, char *cmd, size_t len); // method to send / receive command
 int readline(int serial_fd, char *buf); 
 
 
-
+int hourVar;
+int minuteVar;
 
 
 
 
 int
 main(int argc, char **argv) {
-    Pre = clock();
+    Pre = clock(); // counts amount of seconds that have passed 
    int fd;
     char *device;
     int ret;
@@ -85,16 +86,136 @@ done:
     return ret;
 }
 
-void printHist(int hist[96][5]){
+void printHist(int hist[96][5], int hourVar, int minuteVar){
 
-    for(int x = 0; x < 96; x++){
-        for(int y=0; y < 5; y++){
-            printf("15 min interval 0 to 96: %d \n",x);
-            printf("0 through 5 BPM value: %d \n",y);
-            printf("Frequency: %d \n",hist[x][y]);
-            printf("\n");
-        }
+    // BPM 
+    int freq0 = 0; // 0 through 40
+    int freq1 = 0; // 41 through 80
+    int freq2 = 0; // 81 through 120
+    int freq3 = 0; // 121 through 160
+    int freq4 = 0; // above 160
+
+    int hourStart = 0;
+    int hourEnd = 0;
+    char* minuteStart = "xx";
+    char* minuteEnd = "xx";
+
+    hourStart = hourVar;
+    hourEnd = hourVar;
+
+    int index = 0;
+
+    if((0<=minuteVar)&&(minuteVar<15)){
+        index = hourVar * 4;
+        minuteStart = "00";
+        minuteEnd = "15";
+
     }
+    else if((15<=minuteVar)&&(minuteVar<30)){
+        index = (hourVar*4)+1;
+        minuteStart = "15";
+        minuteEnd = "30";
+
+    }
+    else if((30<=minuteVar)&&(minuteVar<45)){
+        index = (hourVar*4)+1;
+        minuteStart = "30";
+        minuteEnd = "45";
+
+    }
+    else if((45<=minuteVar)&&(minuteVar<60)){
+        index = (hourVar*4)+1;
+        minuteStart = "45";
+        minuteEnd = "00";
+        hourEnd = hourStart + 1;
+
+    }
+
+    freq0 = hist[index][0];
+    freq1 = hist[index][1];
+    freq2 = hist[index][2];
+    freq3 = hist[index][3];
+    freq4 = hist[index][4];
+
+
+        
+
+        printf("Histogram for Current Time Interval: ");
+        printf("%d:%s-%d:%s\n",hourStart,minuteStart,hourEnd,minuteEnd);
+        printf("BPM 0 through 40: ");
+        while(freq0!=0){
+            printf("X");
+            freq0--;
+        }
+        printf("\n");
+        printf("BPM 41 through 80: ");
+        while(freq1!=0){
+            printf("X");
+            freq1--;
+        }
+        printf("\n");
+        printf("BPM 81 through 120");
+        while(freq2!=0){
+            printf("X");
+            freq2--;
+        }        
+        printf("BPM 121 through 160");
+        while(freq3!=0){
+            printf("X");
+            freq3--;
+        }
+    
+
+
+
+
+
+
+
+
+
+    /*
+
+    // First index, intervals 
+    // 0 - 3 12:00am - 1:00am
+    // Example:
+    // 0 is 12:00am - 12:15am
+    // 1 is 12:15am - 12:30am
+    // 2 is 12:30am - 12:45am
+    // 3 is 12:45am - 1:00am
+    // The rest follow the same pattern 
+    // 4 - 7 1:00am - 2:00am
+    // 8 - 11 2:00am - 3:00am
+    // 12 - 15 3:00am - 4:00am
+    // 16 - 19 4:00am - 5:00am
+    // 20 - 23 5:00am - 6:00am
+    // 24 - 27 6:00am - 7:00am
+    // 28 - 31 7:00am - 8:00am
+    // 32 - 35 8:00am - 9:00am
+    // 36 - 39 9:00am - 10:00am
+    // 40 - 43 10:00am - 11:00am
+    // 44 - 47 11:00am - 12:00pm
+    // 48 - 51  12:00am - 1:00am
+    // 52 - 55 1:00am - 2:00am
+    // 56 - 59 2:00am - 3:00am
+    // 60 - 63 3:00am - 4:00am
+    // 64 - 67 4:00am - 5:00am
+    // 68 - 71 5:00am - 6:00am
+    // 72 - 75 6:00am - 7:00am
+    // 76 - 79 7:00am - 8:00am
+    // 80 - 83 8:00am - 9:00am
+    // 84 - 87 9:00am - 10:00am
+    // 88 - 91 10:00am - 11:00am
+    // 92 - 95 11:00am - 12:00pm
+    
+    Second Index      BPM Value          Outlier Warning?
+    0                 0 through 40      <- This sends response to Arduino to send BPM low warning
+    1                 41 through 80
+    2                 81 through 120
+    3                 121 through 160
+    4                 above 160         <- This sends response to Arduino to send BPM high warning
+    */
+
 }
 
 int
@@ -175,6 +296,8 @@ main_loop(int fd) {
             ret is set equal to either 0 or 1.
             0 means that a valid number of bytes was read in
             1 means that nothing was read in  */
+         
+
             if(strcmp(buffer,showX)==0){
                 size_t c1 = strlen(command1);
                 n = send_cmd(fd,command1,c1);
@@ -246,7 +369,7 @@ main_loop(int fd) {
                 next = clock();
                 if((next - Pre) / CLOCKS_PER_SEC >= 10){
                     Pre = clock();
-                    printHist(hist);
+                    printHist(hist,hourVar,minuteVar);
 
 
                 }
@@ -306,8 +429,8 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     
 
-    int hourVar = (int) hour;
-    int minuteVar = (int) minute;
+    hourVar = (int) hour;
+    minuteVar = (int) minute;
 
     int firstIndex = -1;
 
@@ -340,10 +463,6 @@ send_cmd(int fd, char *cmd, size_t len) {
         firstIndex = hourVar + 3;
 
     }
-
- 
-
-
 
     int secondIndex = -1;
 
@@ -385,6 +504,7 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     int thirdIndex = firstIndex * secondIndex;
     histStore[thirdIndex]++;
+    // thirdIndex divided by second Index gives 
 
 
     return count;
