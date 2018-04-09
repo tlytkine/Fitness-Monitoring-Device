@@ -57,6 +57,8 @@ String showX = "shX\r"; // string for showX command
 String pause = "PAU\r"; // string for pause command 
 String resume_var = "RES\r"; // string for resume command 
 String write_var = "WRT\r";
+String low = "LOW\r";
+String high = "HIG\r";
 
 // Volatile Variables, used in the interrupt service routine!
 volatile int BPM;                   // int that holds raw Analog in 0. updated every 2mS
@@ -198,6 +200,28 @@ void loop(){
       // current time stored here
       // send these: secondGet,minuteGet,hourGet,dayOfWeekGet,dayOfMonthGet,monthGet,yearGet
       // to C and mmap / plot histogram somehow?
+    }
+    else if(command.equals(low)){
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.write("Warning: ");
+      lcd.setCursor(0,1);
+      lcd.print("BPM Low");
+     // Serial.write(BPM);
+      Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
+     // Serial.flush();
+      delay(100);
+    }
+    else if(command.equals(high)){
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.write("Warning: ");
+      lcd.setCursor(0,1);
+      lcd.print("BPM High");
+     // Serial.write(BPM);
+      Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
+     // Serial.flush();
+      delay(100);
     }
   }
   

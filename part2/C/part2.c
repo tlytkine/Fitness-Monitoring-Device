@@ -7,6 +7,7 @@
 #include <string.h>
 #include <termios.h>
 #include <stdlib.h>
+#include <time.h>
 // Specifies what to return / print upon an error
 #define ERROR(x) \
     do { \
@@ -16,7 +17,8 @@
     } while (0)
 
 
-//int[96][5] hist;
+clock_t Pre, next;
+int hist[96][5]; // histogram to store values
 
 
 int init_tty(int fd); // sets the baud rate / configures serial port settings
@@ -26,23 +28,13 @@ int readline(int serial_fd, char *buf);
 
 
 
-/*typedef struct {
-    int BPM;
-    int minute;
-    int hour;
-    
-} histogramData;
 
-
-typedef struct {
-    struct histogramData;
-    int timeInterval;
-} histogram;*/
 
 
 
 int
 main(int argc, char **argv) {
+    Pre = clock();
    int fd;
     char *device;
     int ret;
@@ -92,6 +84,17 @@ done:
     return ret;
 }
 
+void printHist(int hist[96][5]){
+
+    for(int x = 0; x < 96; x++){
+        for(int y=0; y < 5; y++){
+            printf("15 min interval 0 to 96: %d \n",x);
+            printf("0 through 5 BPM value: %d \n",y);
+            printf("Frequency: %d \n",hist[x][y]);
+        }
+    }
+}
+
 int
 main_loop(int fd) {
 
@@ -122,6 +125,8 @@ main_loop(int fd) {
         char *command2 = "PAU\r";
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
+        // Warning commands
+
 
 
 		
@@ -236,14 +241,25 @@ main_loop(int fd) {
                 running = 0; // exits loop upon user entering exit
             }
 
+                // every 10 seconds print histogram
+                next = clock();
+                if((next - Pre) / CLOCKS_PER_SEC >= 10){
+                    Pre = clock();
+                    printHist(hist);
+
+                }
+
     }
         return ret;
 }
+
+
+
 // function that sends command
 int
 send_cmd(int fd, char *cmd, size_t len) {
     int count; // number of bytes received as a response from the arduino
-    char BPM;
+    char BPMchar;
     char buf[10]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
@@ -271,23 +287,110 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     // Responses aka the BPM, Signal, IBI needs to be stored
   //  printf("Response: %s\n", buf);
-    BPM = buf[0];
-	BPM -= '0';
+    BPMchar = buf[0];
+    printf("BPM: %c\n",BPMchar);
+	BPMchar -= '0';
+    char *low = "LOW\r";
+    char *high = "HIG\r";
     char hour = buf[1];
    	char minute = buf[2];
 	char second = buf[3];
-    printf("BPM: %u", (unsigned int)BPM);
-	printf("%d:", (int)hour);
-	printf("%d:", (int)minute);
-	printf("%d", (int)second);
+    printf("BPM: %u", (unsigned int)BPMchar);
+	printf("%d:",(int) hour);
+	printf("%d:",(int) minute);
+	printf("%d",(int) second);
 
-    // variable for minutes
-    // variable for hours 
+
+    
+
+    int hourVar = (int) hour;
+    int minuteVar = (int) minute;
+
+    int firstIndex = -1;
+
+
+    int BPM = (int) BPMchar;
+
+        // 1st index is hour
+    // if minutes are between 0 and 15 first index is equal to hour 
+    // between 15 and 30 equal to hour + 1 
+    // between 30 and 45 equal to hour + 2 
+    // between 45 and 60 equal to hour + 3 
+
+    if((minuteVar >= 0)&&(minuteVar<15)){
+        firstIndex = hourVar;
+
+    }
+    else if((minuteVar>=15)&&(minuteVar<30)){
+        firstIndex = hourVar + 1;
+    }
+    else if((minuteVar>=30)&&(minuteVar<45)){
+        firstIndex = hourVar + 2;
+    }
+    else if((minuteVar>=45)&&(minuteVar<60)){
+        firstIndex = hourVar + 3;
+
+    }
+
+ 
+
+
+
+    int secondIndex = -1;
+
+    // Hour is first interval
+    if((0 >= BPM)&&(BPM <= 40)){
+    //  2nd index is 0 
+        secondIndex = 0;
+    // outlier reading (heart rate too low)
+    // sends LOW\r to arduino to print warning to screen
+     // char *low = "LOW\r";
+    // send a command to arduino to print warning to screen 
+        size_t lowCommand = strlen(low);
+        send_cmd(fd,low,lowCommand);
+
+        
+    }
+    else if((41 >= BPM)&&(BPM <= 80)){
+    // 2nd index is 1 
+        secondIndex = 1;
+    }
+    else if((81 >= BPM)&&(BPM <= 120)){
+    // 2nd index is 2 
+        secondIndex = 2;
+    }
+    else if((121 >= BPM)&&(BPM <= 160)){
+    // 2nd index is 3 
+        secondIndex = 3;
+    }
+    else if(BPM >= 160){
+    // 2nd index is 4 
+        secondIndex = 4;
+    // outlier reading 
+    // send a command to arduino to print warning to screen   
+     // char *high = "HIG\r";
+
+
+        size_t highCommand = strlen(high);
+        send_cmd(fd,high,highCommand);  
+        
+    }
+
+    hist[firstIndex][secondIndex]++;
+
+
+
+
+   
+    
+
 
 
 
     return count;
 }
+
+
 
 int
 init_tty(int fd) {
