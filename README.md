@@ -7,3 +7,5 @@ final-project-nextgenproductions2 created by GitHub Classroom
 * Figure out outlier readings, flash warning on LCD when outlier reading comes up 
 * Use UNC mmap video to mmap histogram structure into virtual memory space
 * Make print method for histogram structure 
+* Document explaining communication protocol / schema (check project description)
+* Fritzing 
