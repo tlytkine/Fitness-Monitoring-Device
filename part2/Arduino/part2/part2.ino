@@ -189,6 +189,9 @@ void loop(){
     }
     else if(command.equals(write_var)){
       readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.write("Working");
       Serial.write(BPM);
       Serial.write(hourGet);
       Serial.write(minuteGet);

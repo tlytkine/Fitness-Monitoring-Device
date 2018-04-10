@@ -86,7 +86,7 @@ done:
     return ret;
 }
 
-void printHist(int hist[96][5], int hourVar, int minuteVar){
+void printHist(int hist[96][5]){
 
     // BPM 
     int freq0 = 0; // 0 through 40
@@ -105,6 +105,9 @@ void printHist(int hist[96][5], int hourVar, int minuteVar){
 
     int index = 0;
 
+    printf("minuteVar: %d\n",minuteVar);
+    printf("hourVar: %d \n",hourVar);
+
     if((0<=minuteVar)&&(minuteVar<15)){
         index = hourVar * 4;
         minuteStart = "00";
@@ -118,18 +121,20 @@ void printHist(int hist[96][5], int hourVar, int minuteVar){
 
     }
     else if((30<=minuteVar)&&(minuteVar<45)){
-        index = (hourVar*4)+1;
+        index = (hourVar*4)+2;
         minuteStart = "30";
         minuteEnd = "45";
 
     }
     else if((45<=minuteVar)&&(minuteVar<60)){
-        index = (hourVar*4)+1;
+        index = (hourVar*4)+3;
         minuteStart = "45";
         minuteEnd = "00";
         hourEnd = hourStart + 1;
 
     }
+
+    printf("index %d\n",index);
 
     freq0 = hist[index][0];
     freq1 = hist[index][1];
@@ -137,36 +142,41 @@ void printHist(int hist[96][5], int hourVar, int minuteVar){
     freq3 = hist[index][3];
     freq4 = hist[index][4];
 
+    printf("hist[index][0]: %d\n",hist[index][0]);
+    printf("hist[index][1]: %d\n",hist[index][1]);
+    printf("hist[index][2]: %d\n",hist[index][2]);
+    printf("hist[index][3]: %d\n",hist[index][3]);
+    printf("hist[index][4]: %d\n",hist[index][4]);
 
-        
+
 
         printf("Histogram for Current Time Interval: ");
         printf("%d:%s-%d:%s\n",hourStart,minuteStart,hourEnd,minuteEnd);
-        printf("BPM 0 through 40: ");
+        printf("BPM    0 through 40: ");
         while(freq0!=0){
             printf("X");
             freq0--;
         }
         printf("\n");
-        printf("BPM 41 through 80: ");
+        printf("BPM   41 through 80: ");
         while(freq1!=0){
             printf("X");
             freq1--;
         }
         printf("\n");
-        printf("BPM 81 through 120");
+        printf("BPM  81 through 120: ");
         while(freq2!=0){
             printf("X");
             freq2--;
         } 
         printf("\n");       
-        printf("BPM 121 through 160");
+        printf("BPM 121 through 160: ");
         while(freq3!=0){
             printf("X");
             freq3--;
         }
         printf("\n");
-        printf("BPM above 160");
+        printf("BPM       above 160: ");
         while(freq4!=0){
             printf("X");
             freq4--;
@@ -377,7 +387,7 @@ main_loop(int fd) {
                 next = clock();
                 if((next - Pre) / CLOCKS_PER_SEC >= 10){
                     Pre = clock();
-                    printHist(hist,hourVar,minuteVar);
+                    printHist(hist);
 
 
                 }
@@ -404,7 +414,7 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     // Give the data time to transmit
     // Serial is slow...
-    sleep(1);
+    sleep(3);
     // response read in, number of bytes read set equal to count
     count = readline(fd, buf);
     // Error if read fails or no response is received
@@ -421,21 +431,33 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     // Responses aka the BPM, Signal, IBI needs to be stored
   //  printf("Response: %s\n", buf);
-    BPMchar = buf[0];
-    printf("BPM: %c\n",BPMchar);
-	BPMchar -= '0';
-    char *low = "LOW\r";
-    char *high = "HIG\r";
-    char hour = buf[1];
-   	char minute = buf[2];
-	char second = buf[3];
-    printf("BPM: %u", (unsigned int)BPMchar);
-	printf("%d:",(int) hour);
-	printf("%d:",(int) minute);
-	printf("%d",(int) second);
+    char *low;
+    char *high;
+    char hour;
+    char minute;
+    char second;
+    int BPM;
 
 
-    
+    if(buf[4] == '\n'){
+        BPMchar = buf[0];
+        printf("BPM: %c\n",BPMchar);
+        low = "LOW\r";
+        high = "HIG\r";
+        hour = buf[1];
+       	minute = buf[2];
+    	second = buf[3];
+        BPM = (int)BPMchar;
+        printf("%d:",(int)BPM);
+    	printf("%d:",(int) hour);
+    	printf("%d:",(int) minute);
+    	printf("%d",(int) second);
+    }
+    else {
+        return -1;
+    }
+
+
 
     hourVar = (int) hour;
     minuteVar = (int) minute;
@@ -443,13 +465,14 @@ send_cmd(int fd, char *cmd, size_t len) {
     int firstIndex = -1;
 
 
-    int BPM = BPMchar - '0';
+    
 
     printf("\n");
     printf("hourVar: %d\n",hourVar);
     printf("minuteVar: %d\n",minuteVar);
     printf("BPM: %d\n",BPM);
     printf("\n");
+    printHist(hist);
 
     // 1st index is hour
     // if minutes are between 0 and 15 first index is equal to hour 
@@ -458,17 +481,17 @@ send_cmd(int fd, char *cmd, size_t len) {
     // between 45 and 60 equal to hour + 3 
 
     if((minuteVar >= 0)&&(minuteVar<15)){
-        firstIndex = hourVar;
+        firstIndex = hourVar * 4;
 
     }
     else if((minuteVar>=15)&&(minuteVar<30)){
-        firstIndex = hourVar + 1;
+        firstIndex = (hourVar * 4) + 1;
     }
     else if((minuteVar>=30)&&(minuteVar<45)){
-        firstIndex = hourVar + 2;
+        firstIndex = (hourVar * 4) + 2;
     }
     else if((minuteVar>=45)&&(minuteVar<60)){
-        firstIndex = hourVar + 3;
+        firstIndex = (hourVar * 4) + 3;
 
     }
 
