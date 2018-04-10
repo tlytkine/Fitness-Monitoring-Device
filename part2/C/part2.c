@@ -158,12 +158,20 @@ void printHist(int hist[96][5], int hourVar, int minuteVar){
         while(freq2!=0){
             printf("X");
             freq2--;
-        }        
+        } 
+        printf("\n");       
         printf("BPM 121 through 160");
         while(freq3!=0){
             printf("X");
             freq3--;
         }
+        printf("\n");
+        printf("BPM above 160");
+        while(freq4!=0){
+            printf("X");
+            freq4--;
+        }
+        printf("\n");
     
 
 
