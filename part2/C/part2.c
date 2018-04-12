@@ -7,7 +7,11 @@
 #include <string.h>
 #include <termios.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
+#include <sys/mman.h>
+#include <string.h> 
+
 // Specifies what to return / print upon an error
 #define ERROR(x) \
     do { \
@@ -30,19 +34,100 @@ int readline(int serial_fd, char *buf);
 
 int hourVar;
 int minuteVar;
+const char *filepath = "/tmp/mmapped.bin";
+int mapfd; 
 
+void mapWrite(){
+                    char *histStoreText = malloc(sizeof(char)*480);
+                    for(int x = 0; x<480; x++){
+                        histStoreText[0] = (char) histStore + '0';
+                    }
+
+                    mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+                    if (mapfd == -1){
+                        perror("Error opening file for writing\n");
+                    }
+                    size_t textsize = strlen(histStoreText) + 1;
+                    if(lseek(mapfd,textsize-1,SEEK_SET)==-1)
+                    {
+                        close(mapfd);
+                        perror("Error calling lseek() to stretch the file.\n");
+                    }
+                    
+                    if (write(mapfd, "", 1) == -1){
+                        close(mapfd);
+                        perror("Error writing last byte of the file\n");
+                        
+                     }
+                    char *map = mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, mapfd, 0);
+                    if (map == MAP_FAILED)
+                    {
+                            close(mapfd);
+                            printf("Error mmapping the file\n");
+                            
+                     }
+                    for (size_t i = 0; i < textsize; i++)
+                    {
+                        printf("Writing character %c at %zu\n", histStoreText[i], i);
+                        map[i] = histStoreText[i];
+                    }
+                    if (msync(map, textsize, MS_SYNC) == -1)
+                    {
+                         perror("Could not sync the file to disk");
+                    }
+                    if (munmap(map, textsize) == -1)
+                    {
+                         close(mapfd);
+                         perror("Error un-mmapping the file\n");
+                         
+                    }    
+                        close(mapfd);
+
+}
+
+void mapRead(){
+    // mmap read 
+
+    mapfd = open(filepath, O_RDONLY, (mode_t)0600);
+
+
+    if (mapfd == -1)
+    {
+        perror("Error opening file for reading");
+        exit(EXIT_FAILURE);
+    }
+
+    struct stat fileInfo;
+
+    if (fstat(mapfd, &fileInfo) == -1)
+    {
+        perror("Error getting the file size");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fileInfo.st_size == 0)
+    {
+        fprintf(stderr, "Error: File is empty, nothing to do\n");
+        exit(EXIT_FAILURE);
+    }
+   
+
+}
 
 
 
 int
 main(int argc, char **argv) {
     Pre = clock(); // counts amount of seconds that have passed 
-   int fd;
+    int fd;
     char *device;
     int ret;
     //char *file;
     //int mapfile;
-   
+
+
+    mapRead();
+    
 
     // Connection established to port on /dev/tty.usbmodem1411
     if (argc == 3) {
@@ -105,8 +190,7 @@ void printHist(int hist[96][5]){
 
     int index = 0;
 
-    printf("minuteVar: %d\n",minuteVar);
-    printf("hourVar: %d \n",hourVar);
+
 
     if((0<=minuteVar)&&(minuteVar<15)){
         index = hourVar * 4;
@@ -134,7 +218,6 @@ void printHist(int hist[96][5]){
 
     }
 
-    printf("index %d\n",index);
 
     freq0 = hist[index][0];
     freq1 = hist[index][1];
@@ -142,11 +225,6 @@ void printHist(int hist[96][5]){
     freq3 = hist[index][3];
     freq4 = hist[index][4];
 
-    printf("hist[index][0]: %d\n",hist[index][0]);
-    printf("hist[index][1]: %d\n",hist[index][1]);
-    printf("hist[index][2]: %d\n",hist[index][2]);
-    printf("hist[index][3]: %d\n",hist[index][3]);
-    printf("hist[index][4]: %d\n",hist[index][4]);
 
 
 
@@ -391,6 +469,9 @@ main_loop(int fd) {
 
 
                 }
+
+
+                
              
 
     }
@@ -441,17 +522,13 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     if(buf[4] == '\n'){
         BPMchar = buf[0];
-        printf("BPM: %c\n",BPMchar);
         low = "LOW\r";
         high = "HIG\r";
         hour = buf[1];
        	minute = buf[2];
     	second = buf[3];
         BPM = (int)BPMchar;
-        printf("%d:",(int)BPM);
-    	printf("%d:",(int) hour);
-    	printf("%d:",(int) minute);
-    	printf("%d",(int) second);
+        BPM = BPM - 48;
     }
     else {
         return -1;
@@ -467,10 +544,6 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     
 
-    printf("\n");
-    printf("hourVar: %d\n",hourVar);
-    printf("minuteVar: %d\n",minuteVar);
-    printf("BPM: %d\n",BPM);
     printf("\n");
     printHist(hist);
 
@@ -531,12 +604,21 @@ send_cmd(int fd, char *cmd, size_t len) {
         
     }
 
+
     hist[firstIndex][secondIndex]++;
 
-    int thirdIndex = firstIndex * secondIndex;
-    histStore[thirdIndex]++;
-    // thirdIndex divided by second Index gives 
 
+    
+
+    int i;
+    int j;
+    int index = 0;
+    for(i=0;i<96;i++){
+        for(j=0;j<5;j++){
+            histStore[index] = hist[i][j];
+            index++;
+        }
+    }
 
     return count;
 }
@@ -629,113 +711,6 @@ int readline(int serial_fd, char *buf){
 
 }
 
-/*
-int writeMap(){
-	const char *filepath = "/tmp/mmapped.bin";
-	int mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
 
-    if (mapfd == -1)
-    {
-        perror("Error opening file for writing");
-		return -1;
-        exit(EXIT_FAILURE);
-    }
-	size_t textsize = 480; // + \0 null character
-
-    if (lseek(mapfd, textsize-1, SEEK_SET) == -1)
-    {
-        close(mapfd);
-        perror("Error calling lseek() to 'stretch' the file");
-		return -1;
-        exit(EXIT_FAILURE);
-    }
-
-    * Something needs to be written at the end of the file to
-     * have the file actually have the new size.
-     * Just writing an empty string at the current file position will do.
-     *
-     * Note:
-     *  - The current position in the file is at the end of the stretched
-     *    file due to the call to lseek().
-     *  - An empty string is actually a single '\0' character, so a zero-byte
-     *    will be written at the last byte of the file.
-     
-
-    if (write(mapfd, "", 1) == -1)
-    {
-        close(mapfd);
-        perror("Error writing last byte of the file");
-		return -1;
-        exit(EXIT_FAILURE);
-    }
-
-
-    // Now the file is ready to be mmapped.
-    char *map = mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, mapfd, 0);
-    if (map == MAP_FAILED)
-    {
-        close(mapfd);
-        perror("Error mmapping the file");
-		return -1;
-        exit(EXIT_FAILURE);
-    }
-
-    for (size_t i = 0; i < 96; i++)
-    {
-       
-    }
-
-    // Write it now to disk
-    if (msync(map, textsize, MS_SYNC) == -1)
-    {
-        perror("Could not sync the file to disk");
-    }
-
-    // Don't forget to free the mmapped memory
-    if (munmap(map, textsize) == -1)
-    {
-        close(mapfd);
-        perror("Error un-mmapping the file");
-		return -1;
-        exit(EXIT_FAILURE);
-    }
-
-    // Un-mmaping doesn't close the file, so we still need to do that.
-    close(mapfd);
-
-	
-	return 0;
-}
-
-int readMap(){
-	int ret = 0;
-
-	const char *filepath = "/tmp/mmapped.bin";
-
-    int mapfd = open(filepath, O_RDONLY, (mode_t)0600);
-
-    if (mapfd == -1)
-    {
-        perror("Error opening file for writing");
-        exit(EXIT_FAILURE);
-    }
-
-    struct stat fileInfo = {0};
-
-    if (fstat(mapfd, &fileInfo) == -1)
-    {
-        perror("Error getting the file size");
-        exit(EXIT_FAILURE);
-    }
-
-    if (fileInfo.st_size == 0)
-    {
-        fprintf(stderr, "Error: File is empty, nothing to do\n");
-        exit(EXIT_FAILURE);
-    }
-
-
-	return ret;
-}*/
 
 
