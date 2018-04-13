@@ -2,20 +2,15 @@
 final-project-nextgenproductions2 created by GitHub Classroom
 
 ## To-Do 
-* <strike>Figure out how to send multiple bytes to arduino</strike>
-* <strike>Figure out how to store data into the histogram structure and separate the way it is stored based on the time intervals (what time intervals? how to differentiate?)</strike>
-* <strike>Figure out outlier readings, flash warning on LCD when outlier reading comes up</strike> 
-* <strike>Make print method for histogram structure</strike>
-* <strike>Fix print histogram method to actually print histogram</strike>
-* <strike>Turn the 2D into a 1D array before mmaping </strike>
-* <strike>New heart rate sensor </strike>
-* Figure out why write pauses up randomly 
-* Document explaining communication protocol / schema (check project description)
+* 
+* Document explaining communication protocol / schema (check project description) PART 2 
 https://docs.google.com/document/d/1JgkWabq6OqkZygHLXvkFEupfQqVzrtjhvvwC7WoxdOc/edit?usp=sharing
-* Fritzing 
-* Use UNC mmap video to mmap histogram structure into virtual memory space
-
-* Make sure high and low commands display warnings on LCD 
-* Make sure requesting heart rate every second works 
+* mapwrites error checking causes errors
+* fork, split up parent and child processes 
+* PART 3 writeup
+* debug C 
+* figure out arduino code for environment sensor and added C codes
+* remove unneeded print lines / code 
+* figure out why .DSYM file causes program to crash 
 
 
