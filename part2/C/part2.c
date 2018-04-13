@@ -36,55 +36,54 @@ int hourVar;
 int minuteVar;
 const char *filepath = "/tmp/mmapped.bin";
 int mapfd; 
+char *map;
 
 void mapWrite(){
-                    char *histStoreText = malloc(sizeof(char)*480);
-                    for(int x = 0; x<480; x++){
-                        histStoreText[0] = (char) histStore + '0';
-                    }
+
 
                     mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
                     if (mapfd == -1){
                         perror("Error opening file for writing\n");
                     }
-                    size_t textsize = strlen(histStoreText) + 1;
+                    size_t textsize = 481;
                     if(lseek(mapfd,textsize-1,SEEK_SET)==-1)
                     {
                         close(mapfd);
                         perror("Error calling lseek() to stretch the file.\n");
                     }
-                    
+
                     if (write(mapfd, "", 1) == -1){
                         close(mapfd);
                         perror("Error writing last byte of the file\n");
                         
                      }
-                    char *map = mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, mapfd, 0);
+                    map = mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, mapfd, 0);
                     if (map == MAP_FAILED)
                     {
                             close(mapfd);
                             printf("Error mmapping the file\n");
                             
                      }
-                    for (size_t i = 0; i < textsize; i++)
-                    {
-                        printf("Writing character %c at %zu\n", histStoreText[i], i);
-                        map[i] = histStoreText[i];
-                    }
-                    if (msync(map, textsize, MS_SYNC) == -1)
-                    {
-                         perror("Could not sync the file to disk");
-                    }
-                    if (munmap(map, textsize) == -1)
-                    {
-                         close(mapfd);
-                         perror("Error un-mmapping the file\n");
-                         
-                    }    
-                        close(mapfd);
+
 
 }
 
+void mapSync(){
+            size_t textsize = 481;
+             if (msync(map, textsize, MS_SYNC) == -1)
+            {
+                perror("Could not sync the file to disk");
+            }
+                if (munmap(map, textsize) == -1)
+                {
+                    close(mapfd);
+                    perror("Error un-mmapping the file\n");
+                         
+                }    
+
+                close(mapfd);
+
+}
 void mapRead(){
     // mmap read 
 
@@ -104,12 +103,33 @@ void mapRead(){
         perror("Error getting the file size");
         exit(EXIT_FAILURE);
     }
-
     if (fileInfo.st_size == 0)
     {
         fprintf(stderr, "Error: File is empty, nothing to do\n");
         exit(EXIT_FAILURE);
     }
+
+    printf("File size is %ji\n", (intmax_t)fileInfo.st_size);
+    map = mmap(0, fileInfo.st_size, PROT_READ, MAP_SHARED, mapfd, 0);
+    if (map == MAP_FAILED)
+    {
+        close(mapfd);
+        perror("Error mmapping the file");
+        exit(EXIT_FAILURE);
+    }
+        for (off_t i = 0; i < fileInfo.st_size; i++)
+    {
+        printf("Found character %c at %ji\n", map[i], (intmax_t)i);
+    }
+        // Don't forget to free the mmapped memory
+    if (munmap(map, fileInfo.st_size) == -1)
+    {
+        close(mapfd);
+        perror("Error un-mmapping the file");
+        exit(EXIT_FAILURE);
+    }
+    close(mapfd);
+
    
 
 }
@@ -127,6 +147,11 @@ main(int argc, char **argv) {
 
 
     mapRead();
+
+    for(int i = 0; i < 480; i++){
+        histStore[i] = (int) map[i] - '0';
+
+    }
     
 
     // Connection established to port on /dev/tty.usbmodem1411
@@ -163,6 +188,8 @@ main(int argc, char **argv) {
     if (init_tty(fd) == -1) {
         ERROR("init");
     }
+    
+
 
     ret = main_loop(fd);
 
@@ -466,9 +493,10 @@ main_loop(int fd) {
                 if((next - Pre) / CLOCKS_PER_SEC >= 10){
                     Pre = clock();
                     printHist(hist);
-
-
+                    
                 }
+
+
 
 
                 
@@ -609,16 +637,27 @@ send_cmd(int fd, char *cmd, size_t len) {
 
 
     
-
+    mapWrite();
     int i;
     int j;
     int index = 0;
     for(i=0;i<96;i++){
         for(j=0;j<5;j++){
-            histStore[index] = hist[i][j];
+            map[index] = (char) hist[i][j] + '0';
+            if(hist[i][j]>0){
+                printf("Got here.\n");
+                printf("Char cast: %c \n",(char) hist[i][j] + '0');
+                printf("hist[i][j]: %d \n",hist[i][j]);
+                printf("map[index]: %c \n",map[index]);
+            }
             index++;
         }
     }
+
+
+    mapSync();
+        
+
 
     return count;
 }
@@ -693,6 +732,7 @@ int readline(int serial_fd, char *buf){
     // Read in one character at a time until we get a newline 
     pos = 0;
     while(pos < (buffer_size - 1)){
+
         ret = read(serial_fd, buf + pos, 1);
         if(ret == -1) perror("read");
         else if (ret > 0){

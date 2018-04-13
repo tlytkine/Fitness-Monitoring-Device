@@ -149,6 +149,11 @@ void loop(){
     // the LCD screen will continue to display realtime data
     // and the real time LED will stay on similarly 
     // to what is shown above, resume is used after showX or pause 
+    /* Part 3: resume: Show the real-time heart rate on the display device. 
+     *  This should be the default mode of the system. Indicate this somehow in your circuit 
+     *  (using an LED for example).
+     * 
+     */
     if(command.equals(resume_var)){
         paused = false;
         lcd.clear();
@@ -161,6 +166,9 @@ void loop(){
     }
     // showX command prints X to the screen instead of the current BPM
     // and turns the real time LED off 
+    /* Part 3: showX: Set the output device to show X as the current heart rate instead of the current 
+     *  real-time value. In addition, print the value to the console.
+     */
     else if(command.equals(showX)){
       paused = true;
       lcd.clear();
@@ -175,6 +183,10 @@ void loop(){
     }
     // pause will keep the current BPM displayed on the screen 
     // and turns the real time LED off 
+    /* Part 3: pause: Pause the output and keep the display device showing the current reading. 
+     *  Indicate this somehow in your circuit (using an LED for example).
+     * 
+     */
     else if(command.equals(pause)){
       paused = true;
       lcd.clear();
@@ -226,6 +238,15 @@ void loop(){
      // Serial.flush();
       delay(100);
     }
+    /*Part 3 to add 
+    /* rate: Query the value of the heart rate sensor at the current time and print it to the console
+    /* env: Query the value of the environment sensor from the Arduino and print it to the console
+    /* hist: Print a representation of the current time block’s heart rate histogram to the console
+    /* hist X: Print a representation of the given time block’s heart rate histogram to the console
+    /* reset: Clear all data from the backing file
+    /* exit: Exits the host program
+      * 
+      */
   }
   
   
