@@ -37,6 +37,7 @@ int minuteVar;
 const char *filepath = "/tmp/mmapped.bin";
 int mapfd; 
 char *map;
+int BPM;
 
 void mapWrite(){
 
@@ -287,14 +288,6 @@ void printHist(int hist[96][5]){
             freq4--;
         }
         printf("\n");
-    
-
-
-
-
-
-
-
 
 
     /*
@@ -345,7 +338,7 @@ int
 main_loop(int fd) {
 
     char *buffer; // buffer which input string is read into
-  //  size_t bytes_in; // number of bytes read
+    size_t bytes_in; // number of bytes read
     size_t buffer_size = 128; // size of buffer made to 128 to assure functionality when entering multiple commands
     // size_t characters;
     buffer = (char *)malloc(buffer_size * sizeof(char)); // memory allocated for buffer
@@ -360,8 +353,12 @@ main_loop(int fd) {
         char *showX = "showX\n"; // 1
         char *pause = "pause\n"; // 2
         char *resume = "resume\n"; // 3
+        char *rate = "rate\n"; 
+        char *env = "env\n";
+        char *hist1 = "hist\n";
+        char *histX = "histX\n";
+        char *reset = "reset\n";
         char *exit = "exit\n"; 
-        char *help = "help\n"; 
 
         // Set of strings which are sent to the arduino
         // These strings are compared in the arduino code
@@ -370,13 +367,12 @@ main_loop(int fd) {
         char *command2 = "PAU\r";
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
+        char *command5 = "ENV\r";
+        
+
+
         // Warning commands
 
-
-
-		
-		
-		
         // variable used in order to keep program running in a loop
         int running = 1;
         // return value
@@ -386,22 +382,25 @@ main_loop(int fd) {
 
         while(running!=0){
             // *  - Prompt user for input
-            /*
             printf("Please input one of the following options\n");
             printf("showX\n"); // 1
             printf("pause\n"); // 2
             printf("resume\n"); 
+            printf("rate\n");
+            printf("env\n");
+            printf("hist\n");
+            printf("histX\n");
+            printf("reset\n");
             printf("exit\n"); 
-            printf("help\n"); 
             printf("\n");
-            */
+            
             // gets number of bytes in and puts them into the buffer
-        //    bytes_in = getline(&buffer,&buffer_size,stdin);
-       //     printf("\n");
+            bytes_in = getline(&buffer,&buffer_size,stdin);
+            printf("\n");
             // prints number of characters read
-        //    printf("%zu characters were read.\n",bytes_in);
+            printf("%zu characters were read.\n",bytes_in);
             // prints command that was typed
-       //     printf("You typed: %s\n",buffer);
+            printf("You typed: %s\n",buffer);
 
 
 
@@ -420,7 +419,8 @@ main_loop(int fd) {
             0 means that a valid number of bytes was read in
             1 means that nothing was read in  */
          
-
+             // show X: Set the output device to show X as the current heart rate 
+             // instead of the current real-time value.
             if(strcmp(buffer,showX)==0){
                 size_t c1 = strlen(command1);
                 n = send_cmd(fd,command1,c1);
@@ -431,9 +431,7 @@ main_loop(int fd) {
                     ret = 1;
                 }
             }
-
-
-
+            // char *command2 = "PAU\r";
             /*pause: Pause the output and keep the display device showing the
             current reading */
             if(strcmp(buffer,pause)==0){
@@ -447,6 +445,7 @@ main_loop(int fd) {
                 }
             }
 
+            // char *command3 = "RES\r";
             /*resume: Show the real-time heart rate on the display device.
             This should be the default mode of the system. */
             if(strcmp(buffer,resume)==0){
@@ -460,41 +459,136 @@ main_loop(int fd) {
                 }
             }
 
+            // char *command4 = "WRT\r";
+            // rate: Query the value of the heart rate sensor at the current time
+            // and print it to the console. 
+            if(strcmp(buffer,rate)==0){
+                size_t c4 = strlen(command4);
+                n = send_cmd(fd,command4,c4);
 
-
-            // Displays list of available commands
-            if(strcmp(buffer,help)==0){
-                printf("Commands available: \n");
-                printf("showX : Sets LCD to show X as current heart rate instead of the current real-time value. \n");
-                printf("pause : Pauses the output and keeps the display device showing the current reading. \n");
-                printf("resume : Shows the real-time heart rate on the display device. (Default mode of system) \n");
-                printf("exit : Exits the host program \n");
-                printf("help : Self explanatory \n");
-                ret = 0;
+                if(n>0){
+                    ret = 0;
+                }
+                else{
+                    ret = 1;
+                }
+                printf("Current BPM: %d\n",BPM);
             }
 
-            // exit: Exits the host program.
+            // char *command5 = "ENV\r";
+            // env: Query the value of the environment sensor from the Arduino 
+            // and print it to the console.
+            if(strcmp(buffer,env)==0){
+                size_t c5 = strlen(command5);
+                n = send_cmd(fd,command5,c5);
+                if(n>0){
+                    ret = 0;
+                }
+                else{
+                    ret = 1;
+                }
+            }
+            
+            // hist: Print a representation of the current time block's heart rate 
+            // histogram to the console.
+            if(strcmp(buffer,hist1)==0){
+                printHist(hist); 
+            }   
+            // histX: Print a representation of the given time block's heart rate histogram to the console
+            if(strcmp(buffer,histX)==0){
+                printf("Enter time block number: ");
+                // gets number of bytes in and puts them into the buffer
+                bytes_in = getline(&buffer,&buffer_size,stdin);
+                printf("\n");
+                // prints number of characters read
+                printf("%zu characters were read.\n",bytes_in);
+                // prints command that was typed
+                printf("You typed: %s\n",buffer);
+                int temp = (int) buffer - '0';
+                memset(buffer,0,buffer_size);
+
+
+                mapRead();
+                int timeBlock = (temp * 5);
+
+                int freq0 = map[timeBlock];
+                int freq1 = map[timeBlock+1];
+                int freq2 = map[timeBlock+2];
+                int freq3 = map[timeBlock+3];
+                int freq4 = map[timeBlock+4];
+
+                printf("Histogram for Given Time Block: ");
+                printf("BPM    0 through 40: ");
+                while(freq0!=0){
+                    printf("X");
+                    freq0--;
+                }
+                printf("\n");
+                printf("BPM   41 through 80: ");
+                while(freq1!=0){
+                    printf("X");
+                    freq1--;
+                }
+                printf("\n");
+                printf("BPM  81 through 120: ");
+                while(freq2!=0){
+                    printf("X");
+                    freq2--;
+                } 
+                printf("\n");       
+                printf("BPM 121 through 160: ");
+                while(freq3!=0){
+                    printf("X");
+                    freq3--;
+                }
+                printf("\n");
+                printf("BPM       above 160: ");
+                while(freq4!=0){
+                    printf("X");
+                    freq4--;
+                }
+                printf("\n");
+
+            }
+            // reset: Clear all data from the backing file 
+            if(strcmp(buffer,reset)==0){
+                int len = 481;
+                void *address;
+                // 0 is offset 
+                address = mmap(NULL,len, PROT_READ, MAP_SHARED, mapfd, 0);
+                munmap(address,len);
+                close(mapfd);
+                unlink(filepath);
+                printf("Data cleared!\n");
+
+
+            }
+            // exit: Exits the host program 
             if(strcmp(buffer,exit)==0){
                 printf("Exiting program...\n");
                 ret = 0;
                 running = 0; // exits loop upon user entering exit
+
             }
 
 
-                // Requests heart rate value from Arduino every second 
-                // (sends command 4 aka write command)
+            // Requests heart rate value from Arduino every second 
+            // (sends command 4 aka write command)
 
-                size_t c4 = strlen(command4);
-                n = send_cmd(fd,command4,c4);
+            size_t c4 = strlen(command4);
+            n = send_cmd(fd,command4,c4);
                // sleep(1);
 
                 // every 10 seconds print histogram
+
+                /*
                 next = clock();
                 if((next - Pre) / CLOCKS_PER_SEC >= 10){
                     Pre = clock();
                     printHist(hist);
                     
                 }
+                */
 
 
 
@@ -505,6 +599,7 @@ main_loop(int fd) {
     }
         return ret;
 }
+
 
 
 
@@ -545,7 +640,6 @@ send_cmd(int fd, char *cmd, size_t len) {
     char hour;
     char minute;
     char second;
-    int BPM;
 
 
     if(buf[4] == '\n'){
