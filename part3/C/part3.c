@@ -490,6 +490,8 @@ parent_loop(int fd) {
                 else {
                     ret = 1;
                 }
+                // print the value to the console.
+                printf("BPM: %d\n",BPM);
             }
             // char *command2 = "PAU\r";
             /*pause: Pause the output and keep the display device showing the

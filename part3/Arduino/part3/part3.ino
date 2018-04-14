@@ -57,8 +57,10 @@ String showX = "shX\r"; // string for showX command
 String pause = "PAU\r"; // string for pause command 
 String resume_var = "RES\r"; // string for resume command 
 String write_var = "WRT\r";
+String env_var = "ENV\r"; // environment sensor variable 
 String low = "LOW\r";
 String high = "HIG\r";
+
 
 // Volatile Variables, used in the interrupt service routine!
 volatile int BPM;                   // int that holds raw Analog in 0. updated every 2mS
@@ -211,10 +213,12 @@ void loop(){
       Serial.write("\n");
       //Serial.flush();
       //delay(100);
-
-      // current time stored here
-      // send these: secondGet,minuteGet,hourGet,dayOfWeekGet,dayOfMonthGet,monthGet,yearGet
-      // to C and mmap / plot histogram somehow?
+    }
+    // env_var = "ENV"\r"
+    // env: Query the value of the environment sensor from the Arduino and print 
+    // it to the console 
+    else if(command.equals(env_var)){
+      
     }
     else if(command.equals(low)){
       lcd.clear();
