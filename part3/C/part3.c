@@ -11,6 +11,7 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <string.h> 
+#include <signal.h>
 
 // Specifies what to return / print upon an error
 #define ERROR(x) \
@@ -27,10 +28,11 @@ int histStore[480]; // 1D array to mmap
 
 
 int init_tty(int fd); // sets the baud rate / configures serial port settings
-int main_loop(int fd); // contains program with prompt to send commands from terminal to arduino
+int parent_loop(int fd); // contains program with prompt to send commands from terminal to arduino
+int child_loop(int fd);
 int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino
 int readline(int serial_fd, char *buf); 
-
+int pid; //Forks the program.
 
 int hourVar;
 int minuteVar;
@@ -75,26 +77,35 @@ void mapSync(){
             {
                 perror("Could not sync the file to disk");
             }
-                if (munmap(map, textsize) == -1)
-                {
-                    close(mapfd);
-                    perror("Error un-mmapping the file\n");
-                         
-                }    
-
-                close(mapfd);
+               
+}
+void mapClose(){
+struct stat fileInfo;
+if (fstat(mapfd, &fileInfo) == -1)
+    {
+        perror("Error getting the file size");
+        exit(EXIT_FAILURE);
+    }
+if (munmap(map, fileInfo.st_size) == -1)
+    {
+        close(mapfd);
+        perror("Error un-mmapping the file");
+        exit(EXIT_FAILURE);
+    }
+    close(mapfd);
 
 }
+
 void mapRead(){
     // mmap read 
-
-    mapfd = open(filepath, O_RDONLY, (mode_t)0600);
+	printf("map read\n");
+    mapfd = open(filepath, O_RDWR, (mode_t)0600);
 
 
     if (mapfd == -1)
     {
         perror("Error opening file for reading");
-        exit(EXIT_FAILURE);
+        return;
     }
 
     struct stat fileInfo;
@@ -107,29 +118,32 @@ void mapRead(){
     if (fileInfo.st_size == 0)
     {
         fprintf(stderr, "Error: File is empty, nothing to do\n");
-        exit(EXIT_FAILURE);
+        return;
     }
+	else{
+		map = mmap(0, fileInfo.st_size, PROT_READ, MAP_SHARED, mapfd, 0);
+		if (map == MAP_FAILED)
+    	{
+        	close(mapfd);
+        	perror("Error mmapping the file");
+        	exit(EXIT_FAILURE);
+    	}
+		for(int i = 0; i < 480; i++){
+        	histStore[i] = (int) map[i] - '0';
+
+    	}
+	}
 
     printf("File size is %ji\n", (intmax_t)fileInfo.st_size);
-    map = mmap(0, fileInfo.st_size, PROT_READ, MAP_SHARED, mapfd, 0);
-    if (map == MAP_FAILED)
-    {
-        close(mapfd);
-        perror("Error mmapping the file");
-        exit(EXIT_FAILURE);
-    }
+    
+    
         for (off_t i = 0; i < fileInfo.st_size; i++)
     {
         printf("Found character %c at %ji\n", map[i], (intmax_t)i);
+	
     }
         // Don't forget to free the mmapped memory
-    if (munmap(map, fileInfo.st_size) == -1)
-    {
-        close(mapfd);
-        perror("Error un-mmapping the file");
-        exit(EXIT_FAILURE);
-    }
-    close(mapfd);
+    
 
    
 
@@ -139,6 +153,7 @@ void mapRead(){
 
 int
 main(int argc, char **argv) {
+
     Pre = clock(); // counts amount of seconds that have passed 
     int fd;
     char *device;
@@ -148,11 +163,9 @@ main(int argc, char **argv) {
 
 
     mapRead();
+	printf("finished map read\n");
 
-    for(int i = 0; i < 480; i++){
-        histStore[i] = (int) map[i] - '0';
-
-    }
+    
     
 
     // Connection established to port on /dev/tty.usbmodem1411
@@ -190,9 +203,14 @@ main(int argc, char **argv) {
         ERROR("init");
     }
     
-
-
-    ret = main_loop(fd);
+	pid = fork();
+	printf("%d\n", pid);
+	if(pid > 0){
+		ret = parent_loop(fd);
+	}
+	else{
+    	ret = child_loop(fd);
+	}
 
 done:
     close(fd);
@@ -335,8 +353,50 @@ void printHist(int hist[96][5]){
 }
 
 int
-main_loop(int fd) {
+child_loop(int fd) {
+	
+    char *buffer; // buffer which input string is read into
+   
+    size_t buffer_size = 128; // size of buffer made to 128 to assure functionality when entering multiple commands
+    // size_t characters;
+    buffer = (char *)malloc(buffer_size * sizeof(char)); // memory allocated for buffer
+    if(buffer == NULL){
+        perror("Unable to allocate buffer");
+        exit(1);
+    }
+ 
+        char *command4 = "WRT\r";
+ 
+        
 
+
+        // Warning commands
+
+        // variable used in order to keep program running in a loop
+        int running = 1;
+        // return value
+        // program loop
+
+
+        while(running!=0){
+			printf("c\n");
+             //int n; // number of bytes sent to arduino (greater than 0 if successful)
+
+
+            // Requests heart rate value from Arduino every second 
+            // (sends command 4 aka write command)
+
+            size_t c4 = strlen(command4);
+            send_cmd(fd,command4,c4);  
+			
+
+   		}	
+        return 0;
+}
+
+int
+parent_loop(int fd) {
+	printf("c");
     char *buffer; // buffer which input string is read into
     size_t bytes_in; // number of bytes read
     size_t buffer_size = 128; // size of buffer made to 128 to assure functionality when entering multiple commands
@@ -504,11 +564,9 @@ main_loop(int fd) {
                 printf("%zu characters were read.\n",bytes_in);
                 // prints command that was typed
                 printf("You typed: %s\n",buffer);
-                int temp = (int) buffer - '0';
+                int temp = (int) buffer[5] - '0';
                 memset(buffer,0,buffer_size);
 
-
-                mapRead();
                 int timeBlock = (temp * 5);
 
                 int freq0 = map[timeBlock];
@@ -566,40 +624,16 @@ main_loop(int fd) {
             // exit: Exits the host program 
             if(strcmp(buffer,exit)==0){
                 printf("Exiting program...\n");
+				mapClose();
+				kill(pid, SIGKILL);
                 ret = 0;
                 running = 0; // exits loop upon user entering exit
 
-            }
-
-
-            // Requests heart rate value from Arduino every second 
-            // (sends command 4 aka write command)
-
-            size_t c4 = strlen(command4);
-            n = send_cmd(fd,command4,c4);
-               // sleep(1);
-
-                // every 10 seconds print histogram
-
-                /*
-                next = clock();
-                if((next - Pre) / CLOCKS_PER_SEC >= 10){
-                    Pre = clock();
-                    printHist(hist);
-                    
-                }
-                */
-
-
-
-
-                
-             
+            }   
 
     }
         return ret;
 }
-
 
 
 
@@ -618,7 +652,7 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     // Give the data time to transmit
     // Serial is slow...
-    sleep(3);
+    sleep(1);
     // response read in, number of bytes read set equal to count
     count = readline(fd, buf);
     // Error if read fails or no response is received
@@ -639,7 +673,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     char *high;
     char hour;
     char minute;
-    char second;
+
 
 
     if(buf[4] == '\n'){
@@ -648,9 +682,7 @@ send_cmd(int fd, char *cmd, size_t len) {
         high = "HIG\r";
         hour = buf[1];
        	minute = buf[2];
-    	second = buf[3];
         BPM = (int)BPMchar;
-        BPM = BPM - 48;
     }
     else {
         return -1;
@@ -667,7 +699,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     
 
     printf("\n");
-    printHist(hist);
+    //printHist(hist);
 
     // 1st index is hour
     // if minutes are between 0 and 15 first index is equal to hour 
@@ -738,12 +770,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     for(i=0;i<96;i++){
         for(j=0;j<5;j++){
             map[index] = (char) hist[i][j] + '0';
-            if(hist[i][j]>0){
-                printf("Got here.\n");
-                printf("Char cast: %c \n",(char) hist[i][j] + '0');
-                printf("hist[i][j]: %d \n",hist[i][j]);
-                printf("map[index]: %c \n",map[index]);
-            }
+			printf("%c\n", map[index]);
             index++;
         }
     }

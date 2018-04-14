@@ -118,7 +118,7 @@ void loop(){
 
 
       
-      delay(500); // every second
+      //delay(500); // every second
     if(paused==false){ // if no terminal commands received then proceed 
       // Serial.write(BPM); // writes BPM stored to serial port 
       // Serial.write("\n");
@@ -162,7 +162,7 @@ void loop(){
         lcd.setCursor(0,1);
         lcd.print(BPM);
         Serial.write("\n");
-        delay(100);
+        //delay(100);
     }
     // showX command prints X to the screen instead of the current BPM
     // and turns the real time LED off 
@@ -179,7 +179,7 @@ void loop(){
      // Serial.write(BPM);
       Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
      // Serial.flush();
-      delay(100);
+      //delay(100);
     }
     // pause will keep the current BPM displayed on the screen 
     // and turns the real time LED off 
@@ -197,7 +197,7 @@ void loop(){
       // Serial.write(BPM);
       Serial.write("\n");
       // Serial.flush();
-      delay(100);
+      //delay(100);
     }
     else if(command.equals(write_var)){
       readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
@@ -210,7 +210,7 @@ void loop(){
       Serial.write(secondGet);
       Serial.write("\n");
       //Serial.flush();
-      delay(100);
+      //delay(100);
 
       // current time stored here
       // send these: secondGet,minuteGet,hourGet,dayOfWeekGet,dayOfMonthGet,monthGet,yearGet
@@ -225,7 +225,7 @@ void loop(){
      // Serial.write(BPM);
       Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
      // Serial.flush();
-      delay(100);
+      //delay(100);
     }
     else if(command.equals(high)){
       lcd.clear();
@@ -236,7 +236,7 @@ void loop(){
      // Serial.write(BPM);
       Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
      // Serial.flush();
-      delay(100);
+      //delay(100);
     }
     /*Part 3 to add 
     /* rate: Query the value of the heart rate sensor at the current time and print it to the console
