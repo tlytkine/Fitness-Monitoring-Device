@@ -31,11 +31,14 @@ int init_tty(int fd); // sets the baud rate / configures serial port settings
 int parent_loop(int fd); // contains program with prompt to send commands from terminal to arduino
 int child_loop(int fd);
 int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino
+int send_cmd_env(int fd, char *cmd, size_t len); 
 int readline(int serial_fd, char *buf); 
 int pid; //Forks the program.
 
 int hourVar;
 int minuteVar;
+int tempVar;
+int humidVar;
 const char *filepath = "/tmp/mmapped.bin";
 int mapfd; 
 char *map;
@@ -542,13 +545,15 @@ parent_loop(int fd) {
             // and print it to the console.
             if(strcmp(buffer,env)==0){
                 size_t c5 = strlen(command5);
-                n = send_cmd(fd,command5,c5);
+                n = send_cmd_env(fd,command5,c5);
                 if(n>0){
                     ret = 0;
                 }
                 else{
                     ret = 1;
                 }
+                printf("Temperature: %d\n",tempVar);
+                printf("Humidity: %d\n",humidVar);
             }
             
             // hist: Print a representation of the current time block's heart rate 
@@ -637,8 +642,6 @@ parent_loop(int fd) {
         return ret;
 }
 
-
-
 // function that sends command
 int
 send_cmd(int fd, char *cmd, size_t len) {
@@ -670,7 +673,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     */
 
     // Responses aka the BPM, Signal, IBI needs to be stored
-  //  printf("Response: %s\n", buf);
+    //  printf("Response: %s\n", buf);
     char *low;
     char *high;
     char hour;
@@ -683,7 +686,7 @@ send_cmd(int fd, char *cmd, size_t len) {
         low = "LOW\r";
         high = "HIG\r";
         hour = buf[1];
-       	minute = buf[2];
+        minute = buf[2];
         BPM = (int)BPMchar;
     }
     else {
@@ -772,7 +775,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     for(i=0;i<96;i++){
         for(j=0;j<5;j++){
             map[index] = (char) hist[i][j] + '0';
-			printf("%c\n", map[index]);
+            printf("%c\n", map[index]);
             index++;
         }
     }
@@ -782,6 +785,56 @@ send_cmd(int fd, char *cmd, size_t len) {
         
 
 
+    return count;
+}
+
+
+
+// function that sends command for environment sensor 
+int
+send_cmd_env(int fd, char *cmd, size_t len) {
+    int count; // number of bytes received as a response from the arduino
+    char buf[64]; // buffer to store response from arduino
+    // this if statement sends the command to the arduino and
+    // returns an error upon failure
+    if (write(fd, cmd, len) == -1) {
+        perror("serial-write");
+        return -1;
+    }
+
+    // Give the data time to transmit
+    // Serial is slow...
+    sleep(1);
+    // response read in, number of bytes read set equal to count
+    count = readline(fd, buf);
+    // Error if read fails or no response is received
+    if (count == -1) {
+        perror("serial-read");
+        return -1;
+    } 
+    /*
+    else if (count == 0) {
+        fprintf(stderr, "No data returned\n");
+        return -1;
+    }
+    */
+
+    char temperature;
+    char humidity;
+
+
+    if(buf[2] == '\n'){
+        temperature = buf[0];
+        humidity = buf[1];
+    }
+    else {
+        return -1;
+    }
+
+    tempVar = (int) temperature;
+    humidVar = (int) humidity;
+
+    
     return count;
 }
 

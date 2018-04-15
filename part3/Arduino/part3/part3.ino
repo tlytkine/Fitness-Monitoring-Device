@@ -1,7 +1,6 @@
 
 
 
-
 /*  Pulse Sensor Amped 1.5    by Joel Murphy and Yury Gitman   http://www.pulsesensor.com
 
 ----------------------  Notes ----------------------  ----------------------
@@ -22,6 +21,7 @@ https://github.com/WorldFamousElectronics/PulseSensor_Amped_Arduino/blob/master/
 
 #define PROCESSING_VISUALIZER 1 
 #define SERIAL_PLOTTER  2 
+#include <SI7021.h>
 
 
 byte secondGet;
@@ -69,6 +69,8 @@ volatile int IBI = 600;             // int that holds the time interval between 
 volatile boolean Pulse = false;     // "True" when User's live heartbeat is detected. "False" when not a "live beat".
 volatile boolean QS = false;        // becomes true when Arduoino finds a beat.
 
+void readDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte dayOfMonth, byte month, byte year);
+void setDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte dayOfMonth, byte month, byte year);
 
 
 boolean paused = false; // Boolean that is changed based on commands sent from terminal
@@ -76,16 +78,20 @@ boolean paused = false; // Boolean that is changed based on commands sent from t
 
 static int outputType = SERIAL_PLOTTER;
 
+SI7021 sensor; // declares environment sensor 
+int envPin1 = 4; // A4
+int envPin2 = 5; // A5 
 
 void setup(){
 
-
+ 
   pinMode(blinkPin,OUTPUT);         // pin for LED to blink to heart rate 
   pinMode(realTime,OUTPUT);          // pin that turns on and off depending on whether data is real time or not 
   Serial.begin(9600);             // baud rate of 9600 
   interruptSetup();                 // sets up to read Pulse Sensor signal every 2mS
   lcd.begin(16,2); // configures LCD with 16 columns and 2 rows 
-  
+  // Environment sensor code 
+  sensor.begin();
   bool parse = false;
   bool config = false;
 
@@ -111,8 +117,9 @@ void setup(){
   lcd.print(minuteSet);
   lcd.print(secondSet);
   */
-
   setDS3231time(secondSet,minuteSet,hourSet,dayOfWeekSet,dayOfMonthSet,monthSet,yearSet);
+
+  
 }
   
 
@@ -218,7 +225,18 @@ void loop(){
     // env: Query the value of the environment sensor from the Arduino and print 
     // it to the console 
     else if(command.equals(env_var)){
-      
+
+        si7021_env data = sensor.getHumidityAndTemperature();
+        int temperature = data.getCelsiusHundredths();
+        temperature = temperature / 100;
+        // int humidity = data.getHumidityBasisPoints();
+        int humidity = data.getHumidityPercent();
+        humidity = humidity / 100;
+        Serial.write(temperature);
+        Serial.write(humidity);
+        Serial.write("\n");
+}
+
     }
     else if(command.equals(low)){
       lcd.clear();
@@ -242,15 +260,6 @@ void loop(){
      // Serial.flush();
       //delay(100);
     }
-    /*Part 3 to add 
-    /* rate: Query the value of the heart rate sensor at the current time and print it to the console
-    /* env: Query the value of the environment sensor from the Arduino and print it to the console
-    /* hist: Print a representation of the current time block’s heart rate histogram to the console
-    /* hist X: Print a representation of the given time block’s heart rate histogram to the console
-    /* reset: Clear all data from the backing file
-    /* exit: Exits the host program
-      * 
-      */
   }
   
   
@@ -274,13 +283,7 @@ dayOfMonth, byte month, byte year)
   Wire.write(decToBcd(year)); // set year (0 to 99)
   Wire.endTransmission();
 }
-void readDS3231time(byte *second,
-byte *minute,
-byte *hour,
-byte *dayOfWeek,
-byte *dayOfMonth,
-byte *month,
-byte *year)
+void readDS3231time(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byte *dayOfMonth, byte *month, byte *year)
 {
   Wire.beginTransmission(DS3231_I2C_ADDRESS);
   Wire.write(0); // set DS3231 register pointer to 00h
