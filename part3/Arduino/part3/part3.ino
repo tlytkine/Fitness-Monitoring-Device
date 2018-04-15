@@ -1,3 +1,6 @@
+#include <LiquidCrystal.h> // Library used to interact with LCD 
+#include <SI7021.h>
+#include <Wire.h>
 
 
 
@@ -14,14 +17,11 @@ Read Me:
 https://github.com/WorldFamousElectronics/PulseSensor_Amped_Arduino/blob/master/README.md
  ----------------------       ----------------------  ----------------------
 */
-#include <LiquidCrystal.h> // Library used to interact with LCD 
 
-#include "Wire.h"
 #define DS3231_I2C_ADDRESS 0x68
-
 #define PROCESSING_VISUALIZER 1 
 #define SERIAL_PLOTTER  2 
-#include <SI7021.h>
+
 
 
 byte secondGet;
@@ -69,7 +69,7 @@ volatile int IBI = 600;             // int that holds the time interval between 
 volatile boolean Pulse = false;     // "True" when User's live heartbeat is detected. "False" when not a "live beat".
 volatile boolean QS = false;        // becomes true when Arduoino finds a beat.
 
-void readDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte dayOfMonth, byte month, byte year);
+void readDS3231time(byte *second, byte *minute, byte *hour, byte *dayOfWeek, byte *dayOfMonth, byte *month, byte *year);
 void setDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte dayOfMonth, byte month, byte year);
 
 
@@ -81,6 +81,7 @@ static int outputType = SERIAL_PLOTTER;
 SI7021 sensor; // declares environment sensor 
 int envPin1 = 4; // A4
 int envPin2 = 5; // A5 
+void interruptSetup();
 
 void setup(){
 
@@ -227,16 +228,11 @@ void loop(){
     else if(command.equals(env_var)){
 
         si7021_env data = sensor.getHumidityAndTemperature();
-        int temperature = data.getCelsiusHundredths();
-        temperature = temperature / 100;
-        // int humidity = data.getHumidityBasisPoints();
-        int humidity = data.getHumidityPercent();
-        humidity = humidity / 100;
+        int temperature = data.celsiusHundredths / 100;
+        int humidity = data.humidityBasisPoints / 100;
         Serial.write(temperature);
         Serial.write(humidity);
         Serial.write("\n");
-}
-
     }
     else if(command.equals(low)){
       lcd.clear();
@@ -262,13 +258,14 @@ void loop(){
     }
   }
   
-  
-  if (QS == true){     // A Heartbeat Was Found        
+  if(QS == true){     // A Heartbeat Was Found        
         prevBPM = BPM;         // used to save prevBPM for debugging purposes       
   }                  
   delay(IBI);                           
 
-}void setDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte
+}
+
+void setDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte
 dayOfMonth, byte month, byte year)
 {
   // sets time and date data to DS3231

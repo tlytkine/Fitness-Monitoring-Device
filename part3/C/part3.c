@@ -22,7 +22,7 @@
     } while (0)
 
 
-clock_t Pre, next;
+clock_t Pre, next; // to count time between operations 
 int hist[96][5]; // histogram to store values
 int histStore[480]; // 1D array to mmap
 
@@ -31,47 +31,42 @@ int init_tty(int fd); // sets the baud rate / configures serial port settings
 int parent_loop(int fd); // contains program with prompt to send commands from terminal to arduino
 int child_loop(int fd);
 int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino
-int send_cmd_env(int fd, char *cmd, size_t len); 
-int readline(int serial_fd, char *buf); 
+int send_cmd_env(int fd, char *cmd, size_t len);  // second method to send / receive commands for environment sensor 
+int readline(int serial_fd, char *buf);  
 int pid; //Forks the program.
 
-int hourVar;
-int minuteVar;
-int tempVar;
-int humidVar;
-const char *filepath = "/tmp/mmapped.bin";
-int mapfd; 
-char *map;
-int BPM;
+// Global variables to store information from sensors 
+int hourVar; // hour 
+int minuteVar; // minute 
+int tempVar; // temperature 
+int humidVar; // humidity 
+const char *filepath = "/tmp/mmapped.bin"; // mmap file path 
+int mapfd; // map file descriptor 
+char *map; 
+int BPM; // BPM value 
 
 void mapWrite(){
+    mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+    if (mapfd == -1){
+        perror("Error opening file for writing\n");
+    }
+    size_t textsize = 481; // histogram size 
+    if(lseek(mapfd,textsize-1,SEEK_SET)==-1)
+    {
+        close(mapfd);
+        perror("Error calling lseek() to stretch the file.\n");
+    }
 
-
-                    mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
-                    if (mapfd == -1){
-                        perror("Error opening file for writing\n");
-                    }
-                    size_t textsize = 481;
-                    if(lseek(mapfd,textsize-1,SEEK_SET)==-1)
-                    {
-                        close(mapfd);
-                        perror("Error calling lseek() to stretch the file.\n");
-                    }
-
-                    if (write(mapfd, "", 1) == -1){
-                        close(mapfd);
-                        perror("Error writing last byte of the file\n");
-                        
-                     }
-                    map = mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, mapfd, 0);
-                    if (map == MAP_FAILED)
-                    {
-                            close(mapfd);
-                            printf("Error mmapping the file\n");
-                            
-                     }
-
-
+    if (write(mapfd, "", 1) == -1){
+        close(mapfd);
+        perror("Error writing last byte of the file\n");                   
+     }
+     map = mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, mapfd, 0);
+     if (map == MAP_FAILED)
+     {
+        close(mapfd);
+        printf("Error mmapping the file\n");                      
+    }
 }
 
 void mapSync(){
