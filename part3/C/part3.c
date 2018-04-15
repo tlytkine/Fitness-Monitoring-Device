@@ -45,6 +45,8 @@ int mapfd; // map file descriptor
 char *map; 
 int BPM; // BPM value 
 
+
+// Writes values to map 
 void mapWrite(){
     mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
     if (mapfd == -1){
@@ -69,14 +71,16 @@ void mapWrite(){
     }
 }
 
+// Syncs map values to filepath 
 void mapSync(){
-            size_t textsize = 481;
-             if (msync(map, textsize, MS_SYNC) == -1)
-            {
-                perror("Could not sync the file to disk");
-            }
-               
+        size_t textsize = 481;
+        if (msync(map, textsize, MS_SYNC) == -1)
+        {
+            perror("Could not sync the file to disk");
+        }       
 }
+
+// Unmaps file and closes map file descriptor 
 void mapClose(){
 struct stat fileInfo;
 if (fstat(mapfd, &fileInfo) == -1)
@@ -94,6 +98,7 @@ if (munmap(map, fileInfo.st_size) == -1)
 
 }
 
+// Reads in data from map initially 
 void mapRead(){
     // mmap read 
 	printf("map read\n");
@@ -141,9 +146,6 @@ void mapRead(){
 	
     }
         // Don't forget to free the mmapped memory
-    
-
-   
 
 }
 
@@ -164,8 +166,6 @@ main(int argc, char **argv) {
 	printf("finished map read\n");
 
     
-    
-
     // Connection established to port on /dev/tty.usbmodem1411
     if (argc == 3) {
         device = argv[1];
@@ -234,8 +234,6 @@ void printHist(int hist[96][5]){
 
     int index = 0;
 
-
-
     if((0<=minuteVar)&&(minuteVar<15)){
         index = hourVar * 4;
         minuteStart = "00";
@@ -259,17 +257,13 @@ void printHist(int hist[96][5]){
         minuteStart = "45";
         minuteEnd = "00";
         hourEnd = hourStart + 1;
-
     }
-
 
     freq0 = hist[index][0];
     freq1 = hist[index][1];
     freq2 = hist[index][2];
     freq3 = hist[index][3];
     freq4 = hist[index][4];
-
-
 
 
         printf("Histogram for Current Time Interval: ");
@@ -364,9 +358,6 @@ child_loop(int fd) {
     }
  
         char *command4 = "WRT\r";
- 
-        
-
 
         // Warning commands
 
@@ -637,7 +628,7 @@ parent_loop(int fd) {
         return ret;
 }
 
-// function that sends command
+// Function that sends command for heart rate sensor 
 int
 send_cmd(int fd, char *cmd, size_t len) {
     int count; // number of bytes received as a response from the arduino
@@ -785,7 +776,7 @@ send_cmd(int fd, char *cmd, size_t len) {
 
 
 
-// function that sends command for environment sensor 
+// Function that sends command for environment sensor 
 int
 send_cmd_env(int fd, char *cmd, size_t len) {
     int count; // number of bytes received as a response from the arduino
@@ -828,6 +819,11 @@ send_cmd_env(int fd, char *cmd, size_t len) {
 
     tempVar = (int) temperature;
     humidVar = (int) humidity;
+
+    // For debugging purposes 
+    // ASCII conversion may potentially need to be done 
+    printf("Temperature: %d\n",tempVar);
+    printf("Humidity: %d\n",humidVar);
 
     
     return count;
