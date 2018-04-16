@@ -60,6 +60,7 @@ String write_var = "WRT\r";
 String env_var = "ENV\r"; // environment sensor variable 
 String low = "LOW\r";
 String high = "HIG\r";
+String hist = "HST\r";
 
 
 // Volatile Variables, used in the interrupt service routine!
@@ -211,9 +212,11 @@ void loop(){
     }
     else if(command.equals(write_var)){
       readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.write("Working");
+      //lcd.clear();
+      //lcd.setCursor(0,0);
+      //lcd.write("BPM: ");
+      //lcd.setCursor(0,1);
+      //lcd.print(BPM);
       Serial.write(BPM);
       Serial.write(hourGet);
       Serial.write(minuteGet);
@@ -227,9 +230,21 @@ void loop(){
     // it to the console 
     else if(command.equals(env_var)){
 
-        si7021_env data = sensor.getHumidityAndTemperature();
-        int temperature = data.celsiusHundredths / 100;
-        int humidity = data.humidityBasisPoints / 100;
+
+        sensor.setHeater(true);
+        int temperature = sensor.getCelsiusHundredths();
+        temperature = temperature / 100;
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.write("Temperature: ");
+        lcd.setCursor(0,1);
+        lcd.print(temperature);
+        int humidity = sensor.getHumidityPercent();
+        // lcd.clear();
+        // lcd.setCursor(0,0);
+        // lcd.write("Humidity: ");
+        // lcd.setCursor(0,1);
+        // lcd.print(humidity);
         Serial.write(temperature);
         Serial.write(humidity);
         Serial.write("\n");
@@ -255,6 +270,14 @@ void loop(){
       Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
      // Serial.flush();
       //delay(100);
+    }
+    else if(command.equals(hist)){
+      readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
+      Serial.write(BPM);
+      Serial.write(hourGet);
+      Serial.write(minuteGet);
+      Serial.write(secondGet);
+      Serial.write("\n");
     }
   }
   

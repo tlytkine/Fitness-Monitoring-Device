@@ -207,7 +207,8 @@ main(int argc, char **argv) {
 		ret = parent_loop(fd);
 	}
 	else{
-    	ret = child_loop(fd);
+    	// ret = child_loop(fd);
+        ret = 0;
 	}
 
 done:
@@ -417,6 +418,7 @@ parent_loop(int fd) {
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
         char *command5 = "ENV\r";
+        char *command6 = "HST\r";
         
 
 
@@ -538,18 +540,90 @@ parent_loop(int fd) {
                 else{
                     ret = 1;
                 }
-                printf("Temperature: %d\n",tempVar);
-                printf("Humidity: %d\n",humidVar);
+                float tempNew = (float)tempVar / 10.0;
+                printf("Temperature in Celcius: %f\n",tempNew);
+                printf("Humidity Percent: %d\n",humidVar);
             }
             
             // hist: Print a representation of the current time block's heart rate 
             // histogram to the console.
             if(strcmp(buffer,hist1)==0){
-                printHist(hist); 
+                size_t c6 = strlen(command6);
+                n = send_cmd(fd,command6,c6);
+
+                if(n>0){
+                    ret = 0;
+                }
+                else{
+                    ret = 1;
+                }
+
+                printf("hourVar: %d\n",hourVar);
+                printf("minuteVar: %d\n",minuteVar);
+
+                int val = 0;
+
+                if((0<=minuteVar)&&(minuteVar<15)){
+                    val = 0;
+
+                }
+                else if((15<=minuteVar)&&(minuteVar<30)){
+                    val = 1;
+
+                }
+                else if((30<=minuteVar)&&(minuteVar<45)){
+                    val = 2;
+
+                }
+                else if((45<=minuteVar)&&(minuteVar<60)){
+                    val = 3;
+                }
+
+                int timeBlock = (hourVar * 5);
+                timeBlock = timeBlock + val;
+
+                int freq0 = map[timeBlock];
+                int freq1 = map[timeBlock+1];
+                int freq2 = map[timeBlock+2];
+                int freq3 = map[timeBlock+3];
+                int freq4 = map[timeBlock+4];
+
+                printf("Histogram for Given Time Block: \n");
+                printf("BPM    0 through 40: ");
+                while(freq0!=0){
+                    printf("X");
+                    freq0--;
+                }
+                printf("\n");
+                printf("BPM   41 through 80: ");
+                while(freq1!=0){
+                    printf("X");
+                    freq1--;
+                }
+                printf("\n");
+                printf("BPM  81 through 120: ");
+                while(freq2!=0){
+                    printf("X");
+                    freq2--;
+                } 
+                printf("\n");       
+                printf("BPM 121 through 160: ");
+                while(freq3!=0){
+                    printf("X");
+                    freq3--;
+                }
+                printf("\n");
+                printf("BPM       above 160: ");
+                while(freq4!=0){
+                    printf("X");
+                    freq4--;
+                }
+                printf("\n");
+
             }   
             // histX: Print a representation of the given time block's heart rate histogram to the console
             if(strcmp(buffer,histX)==0){
-                printf("Enter time block number: ");
+                printf("Enter Hour: ");
                 // gets number of bytes in and puts them into the buffer
                 bytes_in = getline(&buffer,&buffer_size,stdin);
                 printf("\n");
@@ -557,10 +631,40 @@ parent_loop(int fd) {
                 printf("%zu characters were read.\n",bytes_in);
                 // prints command that was typed
                 printf("You typed: %s\n",buffer);
-                int temp = (int) buffer[5] - '0';
+                int hourVal = (int) buffer[5] - '0';
+                memset(buffer,0,buffer_size);
+                printf("Enter Minute: ");
+                // gets number of bytes in and puts them into the buffer
+                bytes_in = getline(&buffer,&buffer_size,stdin);
+                printf("\n");
+                // prints number of characters read
+                printf("%zu characters were read.\n",bytes_in);
+                // prints command that was typed
+                printf("You typed: %s\n",buffer);
+                int minuteVal = (int) buffer[5] - '0';
                 memset(buffer,0,buffer_size);
 
-                int timeBlock = (temp * 5);
+
+                int val = 0;
+
+                if((0<=minuteVal)&&(minuteVal<15)){
+                    val = 0;
+
+                }
+                else if((15<=minuteVal)&&(minuteVal<30)){
+                    val = 1;
+
+                }
+                else if((30<=minuteVal)&&(minuteVal<45)){
+                    val = 2;
+
+                }
+                else if((45<=minuteVal)&&(minuteVal<60)){
+                    val = 3;
+                }
+
+                int timeBlock = (hourVal * 5);
+                timeBlock = timeBlock + val;
 
                 int freq0 = map[timeBlock];
                 int freq1 = map[timeBlock+1];
@@ -599,7 +703,6 @@ parent_loop(int fd) {
                     freq4--;
                 }
                 printf("\n");
-
             }
             // reset: Clear all data from the backing file 
             if(strcmp(buffer,reset)==0){
@@ -808,6 +911,10 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     char temperature;
     char humidity;
 
+    printf("buf[0]: %c\n",buf[0]);
+    printf("buf[1]: %c\n",buf[1]);
+    printf("buf[2]: %c\n",buf[2]);
+
 
     if(buf[2] == '\n'){
         temperature = buf[0];
@@ -817,13 +924,13 @@ send_cmd_env(int fd, char *cmd, size_t len) {
         return -1;
     }
 
-    tempVar = (int) temperature;
-    humidVar = (int) humidity;
+    tempVar = (int) temperature - '0';
+    humidVar = (int) humidity - '0';
 
-    // For debugging purposes 
-    // ASCII conversion may potentially need to be done 
-    printf("Temperature: %d\n",tempVar);
-    printf("Humidity: %d\n",humidVar);
+    if(tempVar < 0){
+        tempVar = tempVar * -1;
+    }
+
 
     
     return count;
