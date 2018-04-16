@@ -25,6 +25,7 @@
 clock_t Pre, next; // to count time between operations 
 int hist[96][5]; // histogram to store values
 int histStore[480]; // 1D array to mmap
+int buffer_size = 64;
 
 
 int init_tty(int fd); // sets the baud rate / configures serial port settings
@@ -44,6 +45,10 @@ const char *filepath = "/tmp/mmapped.bin"; // mmap file path
 int mapfd; // map file descriptor 
 char *map; 
 int BPM; // BPM value 
+
+int pipeFd[2];
+int pipeFd2[2];
+
 
 
 // Writes values to map 
@@ -166,6 +171,7 @@ main(int argc, char **argv) {
 	printf("finished map read\n");
 
     
+
     // Connection established to port on /dev/tty.usbmodem1411
     if (argc == 3) {
         device = argv[1];
@@ -200,15 +206,25 @@ main(int argc, char **argv) {
     if (init_tty(fd) == -1) {
         ERROR("init");
     }
+
+
+    pipe(pipeFd);
+    pipe(pipeFd2);
     
-	pid = fork();
-	printf("%d\n", pid);
+
+
+	if((pid = fork()) == -1)
+    {
+        perror("fork");
+        exit(1);
+        // printf("%d\n", pid);
+    }
 	if(pid > 0){
 		ret = parent_loop(fd);
 	}
 	else{
-    	// ret = child_loop(fd);
-        ret = 0;
+    	ret = child_loop(fd);
+        //ret = 0;
 	}
 
 done:
@@ -366,17 +382,25 @@ child_loop(int fd) {
         int running = 1;
         // return value
         // program loop
-
+        char pipeBuf[5];
 
         while(running!=0){
+            
 			printf("c\n");
              //int n; // number of bytes sent to arduino (greater than 0 if successful)
 
 
             // Requests heart rate value from Arduino every second 
             // (sends command 4 aka write command)
-
             size_t c4 = strlen(command4);
+            read(pipeFd[0], pipeBuf, sizeof(pipeBuf));
+            if(pipeBuf[0] == 'x'){
+                write(pipeFd2[1], "s", 1);
+                do{
+                    read(pipeFd[0], pipeBuf, sizeof(pipeBuf));
+                }
+                while(pipeBuf[0] != 'r');
+            }
             send_cmd(fd,command4,c4);  
 			
 
@@ -472,9 +496,17 @@ parent_loop(int fd) {
          
              // show X: Set the output device to show X as the current heart rate 
              // instead of the current real-time value.
+             char pipeBuf[5];
             if(strcmp(buffer,showX)==0){
                 size_t c1 = strlen(command1);
+                write(pipeFd[1], "x", 1);
+                printf("wrote to pipe\n");
+                read(pipeFd2[0], pipeBuf, 1);
+                printf("Read from pipe\n");
+                printf("%s\n", pipeBuf);
+                while(pipeBuf[0]!='s'){}
                 n = send_cmd(fd,command1,c1);
+                write(pipeFd[1], "r", 1);
                 if(n>0){
                     ret = 0;
                 }
@@ -489,7 +521,11 @@ parent_loop(int fd) {
             current reading */
             if(strcmp(buffer,pause)==0){
                 size_t c2 = strlen(command2);
+                write(pipeFd[1], "x", 1);
+                read(pipeFd2[0], pipeBuf, 1);
+                while(pipeBuf[0]!='s'){}
                 n = send_cmd(fd,command2,c2);
+                write(pipeFd[1], "r", 1);
                 if(n>0){
                     ret = 0;
                 }
@@ -503,7 +539,11 @@ parent_loop(int fd) {
             This should be the default mode of the system. */
             if(strcmp(buffer,resume)==0){
                 size_t c3 = strlen(command3);
+                write(pipeFd[1], "x", 1);
+                read(pipeFd2[0], pipeBuf, 1);
+                while(pipeBuf[0]!='s'){}
                 n = send_cmd(fd,command3,c3);
+                write(pipeFd[1], "r", 1);
                 if(n>0){
                     ret = 0;
                 }
@@ -517,7 +557,11 @@ parent_loop(int fd) {
             // and print it to the console. 
             if(strcmp(buffer,rate)==0){
                 size_t c4 = strlen(command4);
+                write(pipeFd[1], "x", 1);
+                read(pipeFd2[0], pipeBuf, 1);
+                while(pipeBuf[0]!='s'){}
                 n = send_cmd(fd,command4,c4);
+                write(pipeFd[1], "r", 1);
 
                 if(n>0){
                     ret = 0;
@@ -533,24 +577,29 @@ parent_loop(int fd) {
             // and print it to the console.
             if(strcmp(buffer,env)==0){
                 size_t c5 = strlen(command5);
+                write(pipeFd[1], "x", 1);
+                read(pipeFd2[0], pipeBuf, 1);
+                while(pipeBuf[0]!='s'){}
                 n = send_cmd_env(fd,command5,c5);
+                write(pipeFd[1], "r", 1);
                 if(n>0){
                     ret = 0;
                 }
                 else{
                     ret = 1;
                 }
-                float tempNew = (float)tempVar / 10.0;
-                printf("Temperature in Celcius: %f\n",tempNew);
-                printf("Humidity Percent: %d\n",humidVar);
+
             }
             
             // hist: Print a representation of the current time block's heart rate 
             // histogram to the console.
             if(strcmp(buffer,hist1)==0){
                 size_t c6 = strlen(command6);
+                write(pipeFd[1], "x", 1);
+                read(pipeFd2[0], pipeBuf, 1);
+                while(pipeBuf[0]!='s'){}
                 n = send_cmd(fd,command6,c6);
-
+                write(pipeFd[1], "r", 1);
                 if(n>0){
                     ret = 0;
                 }
@@ -581,12 +630,17 @@ parent_loop(int fd) {
 
                 int timeBlock = (hourVar * 5);
                 timeBlock = timeBlock + val;
+                int freq0 = map[timeBlock] - '0';
+                int freq1 = map[timeBlock+1] - '0';
+                int freq2 = map[timeBlock+2] - '0';
+                int freq3 = map[timeBlock+3] - '0';
+                int freq4 = map[timeBlock+4] - '0';
+                printf("freq0: %d\n",freq0);
+                printf("freq1: %d\n",freq1);
+                printf("freq2: %d\n",freq2);
+                printf("freq3: %d\n",freq3);
+                printf("freq4: %d\n",freq4);
 
-                int freq0 = map[timeBlock];
-                int freq1 = map[timeBlock+1];
-                int freq2 = map[timeBlock+2];
-                int freq3 = map[timeBlock+3];
-                int freq4 = map[timeBlock+4];
 
                 printf("Histogram for Given Time Block: \n");
                 printf("BPM    0 through 40: ");
@@ -666,12 +720,20 @@ parent_loop(int fd) {
                 int timeBlock = (hourVal * 5);
                 timeBlock = timeBlock + val;
 
-                int freq0 = map[timeBlock];
-                int freq1 = map[timeBlock+1];
-                int freq2 = map[timeBlock+2];
-                int freq3 = map[timeBlock+3];
-                int freq4 = map[timeBlock+4];
 
+                int freq0 = (int) map[timeBlock] - '0';
+                int freq1 = (int) map[timeBlock+1] - '0';
+                int freq2 = (int) map[timeBlock+2] - '0';
+                int freq3 = (int) map[timeBlock+3] - '0';
+                int freq4 = (int) map[timeBlock+4] - '0';
+                printf("freq0: %d\n",freq0);
+                printf("freq1: %d\n",freq1);
+                printf("freq2: %d\n",freq2);
+                printf("freq3: %d\n",freq3);
+                printf("freq4: %d\n",freq4);
+
+
+                /*
                 printf("Histogram for Given Time Block: ");
                 printf("BPM    0 through 40: ");
                 while(freq0!=0){
@@ -703,6 +765,7 @@ parent_loop(int fd) {
                     freq4--;
                 }
                 printf("\n");
+                */
             }
             // reset: Clear all data from the backing file 
             if(strcmp(buffer,reset)==0){
@@ -746,7 +809,7 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     // Give the data time to transmit
     // Serial is slow...
-    sleep(1);
+    sleep(2);
     // response read in, number of bytes read set equal to count
     count = readline(fd, buf);
     // Error if read fails or no response is received
@@ -864,7 +927,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     for(i=0;i<96;i++){
         for(j=0;j<5;j++){
             map[index] = (char) hist[i][j] + '0';
-            printf("%c\n", map[index]);
+            printf("index %d: %c\n", index, map[index]);
             index++;
         }
     }
@@ -886,8 +949,10 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     char buf[64]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
+    printf("Got here.\n");
     if (write(fd, cmd, len) == -1) {
-        perror("serial-write");
+        printf("Serial write error.\n");
+        // perror("serial-write");
         return -1;
     }
 
@@ -895,6 +960,7 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     // Serial is slow...
     sleep(1);
     // response read in, number of bytes read set equal to count
+    
     count = readline(fd, buf);
     // Error if read fails or no response is received
     if (count == -1) {
@@ -914,15 +980,11 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     printf("buf[0]: %c\n",buf[0]);
     printf("buf[1]: %c\n",buf[1]);
     printf("buf[2]: %c\n",buf[2]);
+    printf("buf[3]: %c\n",buf[3]);
 
-
-    if(buf[2] == '\n'){
-        temperature = buf[0];
-        humidity = buf[1];
-    }
-    else {
-        return -1;
-    }
+    temperature = buf[0];
+    humidity = buf[1];
+    
 
     tempVar = (int) temperature - '0';
     humidVar = (int) humidity - '0';
@@ -931,7 +993,9 @@ send_cmd_env(int fd, char *cmd, size_t len) {
         tempVar = tempVar * -1;
     }
 
-
+    float tempNew = (float)tempVar / 10.0;
+    printf("Temperature in Celcius: %f\n",tempNew);
+    printf("Humidity Percent: %d\n",humidVar);
     
     return count;
 }
@@ -996,10 +1060,10 @@ init_tty(int fd) {
 }
 
 
-int readline(int serial_fd, char *buf){
+int readline(int serial_fd, char buf[buffer_size]){
     int pos, ret;
 
-    int buffer_size = 64;
+    
     // Zero out the buffer 
     memset(buf, 0, buffer_size);
 
@@ -1008,10 +1072,15 @@ int readline(int serial_fd, char *buf){
     while(pos < (buffer_size - 1)){
 
         ret = read(serial_fd, buf + pos, 1);
-        if(ret == -1) perror("read");
+        if(ret == -1){
+            perror("Error reading.");
+        }
         else if (ret > 0){
             if(buf[pos] == '\n') break;
             pos += ret;
+        }
+        else{
+            printf("Not working.\n");
         }
     }
 
