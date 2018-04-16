@@ -150,6 +150,10 @@ void loop(){
   
   if(Serial.available()){ // checks if serial port is available 
     command = Serial.readString(); // reads in command from terminal to a string 
+    // lcd.clear();
+    // lcd.setCursor(0,0);
+    // lcd.write("got command");
+
     
     // String comparison is used to perform the corresponding functions 
     // of the commands received from the terminal 

@@ -210,6 +210,7 @@ main(int argc, char **argv) {
 
     pipe(pipeFd);
     pipe(pipeFd2);
+
     
 
 
@@ -219,12 +220,16 @@ main(int argc, char **argv) {
         exit(1);
         // printf("%d\n", pid);
     }
-	if(pid > 0){
-		ret = parent_loop(fd);
+	if(pid> 0){
+        printf("Going to parent loop.\n");
+        printf("pid = %d \n",pid);
+        ret = parent_loop(fd);
+
 	}
-	else{
-    	ret = child_loop(fd);
-        //ret = 0;
+	else {
+        printf("Going to child loop.\n");
+        printf("pid = %d \n",pid);
+        ret = child_loop(fd);
 	}
 
 done:
@@ -386,31 +391,30 @@ child_loop(int fd) {
 
         while(running!=0){
             
-			printf("c\n");
              //int n; // number of bytes sent to arduino (greater than 0 if successful)
 
 
             // Requests heart rate value from Arduino every second 
             // (sends command 4 aka write command)
             size_t c4 = strlen(command4);
-            read(pipeFd[0], pipeBuf, sizeof(pipeBuf));
-            if(pipeBuf[0] == 'x'){
-                write(pipeFd2[1], "s", 1);
-                do{
-                    read(pipeFd[0], pipeBuf, sizeof(pipeBuf));
+            write(pipeFd[1], "g", 1);
+            read(pipeFd[0], pipeBuf, sizeof(pipeBuf) - 1);
+            
+          if(pipeBuf[0] == 'x'){
+               write(pipeFd2[1], "s", 1);
+              do{
+                read(pipeFd[0], pipeBuf, sizeof(pipeBuf));
                 }
-                while(pipeBuf[0] != 'r');
+               while(pipeBuf[0] != 'r'); 
             }
-            send_cmd(fd,command4,c4);  
-			
-
+            send_cmd(fd,command4,c4);  	
    		}	
         return 0;
 }
 
 int
 parent_loop(int fd) {
-	printf("c");
+	printf("parent\n");
     char *buffer; // buffer which input string is read into
     size_t bytes_in; // number of bytes read
     size_t buffer_size = 128; // size of buffer made to 128 to assure functionality when entering multiple commands
@@ -471,7 +475,7 @@ parent_loop(int fd) {
             
             // gets number of bytes in and puts them into the buffer
             bytes_in = getline(&buffer,&buffer_size,stdin);
-            printf("\n");
+            
             // prints number of characters read
             printf("%zu characters were read.\n",bytes_in);
             // prints command that was typed
@@ -519,7 +523,7 @@ parent_loop(int fd) {
             // char *command2 = "PAU\r";
             /*pause: Pause the output and keep the display device showing the
             current reading */
-            if(strcmp(buffer,pause)==0){
+            else if(strcmp(buffer,pause)==0){
                 size_t c2 = strlen(command2);
                 write(pipeFd[1], "x", 1);
                 read(pipeFd2[0], pipeBuf, 1);
@@ -537,7 +541,7 @@ parent_loop(int fd) {
             // char *command3 = "RES\r";
             /*resume: Show the real-time heart rate on the display device.
             This should be the default mode of the system. */
-            if(strcmp(buffer,resume)==0){
+            else if(strcmp(buffer,resume)==0){
                 size_t c3 = strlen(command3);
                 write(pipeFd[1], "x", 1);
                 read(pipeFd2[0], pipeBuf, 1);
@@ -555,7 +559,7 @@ parent_loop(int fd) {
             // char *command4 = "WRT\r";
             // rate: Query the value of the heart rate sensor at the current time
             // and print it to the console. 
-            if(strcmp(buffer,rate)==0){
+            else if(strcmp(buffer,rate)==0){
                 size_t c4 = strlen(command4);
                 write(pipeFd[1], "x", 1);
                 read(pipeFd2[0], pipeBuf, 1);
@@ -575,7 +579,7 @@ parent_loop(int fd) {
             // char *command5 = "ENV\r";
             // env: Query the value of the environment sensor from the Arduino 
             // and print it to the console.
-            if(strcmp(buffer,env)==0){
+            else if(strcmp(buffer,env)==0){
                 size_t c5 = strlen(command5);
                 write(pipeFd[1], "x", 1);
                 read(pipeFd2[0], pipeBuf, 1);
@@ -593,7 +597,7 @@ parent_loop(int fd) {
             
             // hist: Print a representation of the current time block's heart rate 
             // histogram to the console.
-            if(strcmp(buffer,hist1)==0){
+            else if(strcmp(buffer,hist1)==0){
                 size_t c6 = strlen(command6);
                 write(pipeFd[1], "x", 1);
                 read(pipeFd2[0], pipeBuf, 1);
@@ -676,7 +680,7 @@ parent_loop(int fd) {
 
             }   
             // histX: Print a representation of the given time block's heart rate histogram to the console
-            if(strcmp(buffer,histX)==0){
+            else if(strcmp(buffer,histX)==0){
                 printf("Enter Hour: ");
                 // gets number of bytes in and puts them into the buffer
                 bytes_in = getline(&buffer,&buffer_size,stdin);
@@ -768,7 +772,7 @@ parent_loop(int fd) {
                 */
             }
             // reset: Clear all data from the backing file 
-            if(strcmp(buffer,reset)==0){
+            else if(strcmp(buffer,reset)==0){
                 int len = 481;
                 void *address;
                 // 0 is offset 
@@ -781,14 +785,14 @@ parent_loop(int fd) {
 
             }
             // exit: Exits the host program 
-            if(strcmp(buffer,exit)==0){
+            else if(strcmp(buffer,exit)==0){
                 printf("Exiting program...\n");
 				mapClose();
 				kill(pid, SIGKILL);
                 ret = 0;
                 running = 0; // exits loop upon user entering exit
 
-            }   
+            }
 
     }
         return ret;
@@ -811,18 +815,24 @@ send_cmd(int fd, char *cmd, size_t len) {
     // Serial is slow...
     sleep(2);
     // response read in, number of bytes read set equal to count
-    count = readline(fd, buf);
+    // count = readline(fd, buf);
+
+    count = read(fd, buf, sizeof(buf));
+
     // Error if read fails or no response is received
+    
     if (count == -1) {
         perror("serial-read");
         return -1;
     } 
+    
     /*
     else if (count == 0) {
         fprintf(stderr, "No data returned\n");
         return -1;
     }
     */
+    
 
     // Responses aka the BPM, Signal, IBI needs to be stored
     //  printf("Response: %s\n", buf);
@@ -927,7 +937,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     for(i=0;i<96;i++){
         for(j=0;j<5;j++){
             map[index] = (char) hist[i][j] + '0';
-            printf("index %d: %c\n", index, map[index]);
+            // printf("index %d: %c\n", index, map[index]);
             index++;
         }
     }
@@ -961,7 +971,7 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     sleep(1);
     // response read in, number of bytes read set equal to count
     
-    count = readline(fd, buf);
+    count = read(fd, buf, sizeof(buf));
     // Error if read fails or no response is received
     if (count == -1) {
         perror("serial-read");
@@ -977,25 +987,15 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     char temperature;
     char humidity;
 
-    printf("buf[0]: %c\n",buf[0]);
-    printf("buf[1]: %c\n",buf[1]);
-    printf("buf[2]: %c\n",buf[2]);
-    printf("buf[3]: %c\n",buf[3]);
-
     temperature = buf[0];
     humidity = buf[1];
     
 
-    tempVar = (int) temperature - '0';
-    humidVar = (int) humidity - '0';
+    tempVar = (int) temperature;
+    humidVar = (int) humidity;
 
-    if(tempVar < 0){
-        tempVar = tempVar * -1;
-    }
-
-    float tempNew = (float)tempVar / 10.0;
-    printf("Temperature in Celcius: %f\n",tempNew);
-    printf("Humidity Percent: %d\n",humidVar);
+    printf("Temperature: %d\n",tempVar);
+    printf("Humidity: %d\n",humidVar);
     
     return count;
 }
