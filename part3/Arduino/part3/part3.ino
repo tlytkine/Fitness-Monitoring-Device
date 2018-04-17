@@ -1,5 +1,5 @@
+#include <Adafruit_Si7021.h>
 #include <LiquidCrystal.h> // Library used to interact with LCD 
-#include <SI7021.h>
 #include <Wire.h>
 
 
@@ -79,7 +79,7 @@ boolean paused = false; // Boolean that is changed based on commands sent from t
 
 static int outputType = SERIAL_PLOTTER;
 
-SI7021 sensor; // declares environment sensor 
+Adafruit_Si7021 sensor = Adafruit_Si7021(); // declares environment sensor 
 int envPin1 = 4; // A4
 int envPin2 = 5; // A5 
 void interruptSetup();
@@ -234,21 +234,8 @@ void loop(){
     // it to the console 
     else if(command.equals(env_var)){
 
-
-        sensor.setHeater(true);
-        int temperature = sensor.getCelsiusHundredths();
-        temperature = temperature / 100;
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.write("Temperature: ");
-        lcd.setCursor(0,1);
-        lcd.print(temperature);
-        int humidity = sensor.getHumidityPercent();
-        // lcd.clear();
-        // lcd.setCursor(0,0);
-        // lcd.write("Humidity: ");
-        // lcd.setCursor(0,1);
-        // lcd.print(humidity);
+        char temperature = sensor.readTemperature();
+        char humidity = sensor.readHumidity();
         Serial.write(temperature);
         Serial.write(humidity);
         Serial.write("\n");

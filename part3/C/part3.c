@@ -41,7 +41,7 @@ int hourVar; // hour
 int minuteVar; // minute 
 int tempVar; // temperature 
 int humidVar; // humidity 
-const char *filepath = "/tmp/mmapped.bin"; // mmap file path 
+const char *filepath = "/tmp/mmapped.txt"; // mmap file path 
 int mapfd; // map file descriptor 
 char *map; 
 int BPM; // BPM value 
@@ -87,13 +87,13 @@ void mapSync(){
 
 // Unmaps file and closes map file descriptor 
 void mapClose(){
-struct stat fileInfo;
+/*struct stat fileInfo;
 if (fstat(mapfd, &fileInfo) == -1)
     {
         perror("Error getting the file size");
         exit(EXIT_FAILURE);
-    }
-if (munmap(map, fileInfo.st_size) == -1)
+    }*/
+if (munmap(map, sizeof(map)) == -1)
     {
         close(mapfd);
         perror("Error un-mmapping the file");
@@ -106,8 +106,8 @@ if (munmap(map, fileInfo.st_size) == -1)
 // Reads in data from map initially 
 void mapRead(){
     // mmap read 
-	printf("map read\n");
-    mapfd = open(filepath, O_RDWR, (mode_t)0600);
+	// printf("map read\n");
+    mapfd = open(filepath, O_RDWR | O_CREAT, (mode_t)0600);
 
 
     if (mapfd == -1)
@@ -136,20 +136,17 @@ void mapRead(){
         	perror("Error mmapping the file");
         	exit(EXIT_FAILURE);
     	}
-		for(int i = 0; i < 480; i++){
-        	histStore[i] = (int) map[i] - '0';
-
-    	}
 	}
 
-    printf("File size is %ji\n", (intmax_t)fileInfo.st_size);
+   //  printf("File size is %ji\n", (intmax_t)fileInfo.st_size);
     
-    
+    /*
         for (off_t i = 0; i < fileInfo.st_size; i++)
     {
         printf("Found character %c at %ji\n", map[i], (intmax_t)i);
 	
     }
+    */
         // Don't forget to free the mmapped memory
 
 }
@@ -167,8 +164,9 @@ main(int argc, char **argv) {
     //int mapfile;
 
 
-    mapRead();
-	printf("finished map read\n");
+   // mapRead();
+    mapWrite();
+	// printf("finished map read\n");
 
     
 
@@ -221,14 +219,14 @@ main(int argc, char **argv) {
         // printf("%d\n", pid);
     }
 	if(pid> 0){
-        printf("Going to parent loop.\n");
-        printf("pid = %d \n",pid);
+       // printf("Going to parent loop.\n");
+       // printf("pid = %d \n",pid);
         ret = parent_loop(fd);
 
 	}
 	else {
-        printf("Going to child loop.\n");
-        printf("pid = %d \n",pid);
+        // printf("Going to child loop.\n");
+        // printf("pid = %d \n",pid);
         ret = child_loop(fd);
 	}
 
@@ -414,7 +412,7 @@ child_loop(int fd) {
 
 int
 parent_loop(int fd) {
-	printf("parent\n");
+	// printf("parent\n");
     char *buffer; // buffer which input string is read into
     size_t bytes_in; // number of bytes read
     size_t buffer_size = 128; // size of buffer made to 128 to assure functionality when entering multiple commands
@@ -504,10 +502,10 @@ parent_loop(int fd) {
             if(strcmp(buffer,showX)==0){
                 size_t c1 = strlen(command1);
                 write(pipeFd[1], "x", 1);
-                printf("wrote to pipe\n");
+                // printf("wrote to pipe\n");
                 read(pipeFd2[0], pipeBuf, 1);
-                printf("Read from pipe\n");
-                printf("%s\n", pipeBuf);
+                // printf("Read from pipe\n");
+                // printf("%s\n", pipeBuf);
                 while(pipeBuf[0]!='s'){}
                 n = send_cmd(fd,command1,c1);
                 write(pipeFd[1], "r", 1);
@@ -616,29 +614,35 @@ parent_loop(int fd) {
 
                 int val = 0;
 
+                 int timeBlock = ((hourVar) * 20);
+
                 if((0<=minuteVar)&&(minuteVar<15)){
                     val = 0;
+                    timeBlock = timeBlock + val;
 
                 }
                 else if((15<=minuteVar)&&(minuteVar<30)){
                     val = 1;
+                    timeBlock = timeBlock + (val*5);
 
                 }
                 else if((30<=minuteVar)&&(minuteVar<45)){
                     val = 2;
+                    timeBlock = timeBlock + (val*5);
 
                 }
                 else if((45<=minuteVar)&&(minuteVar<60)){
                     val = 3;
+                    timeBlock = timeBlock + (val*5);
                 }
+                printf("timeBlock: %d \n",timeBlock);
+                
 
-                int timeBlock = (hourVar * 5);
-                timeBlock = timeBlock + val;
-                int freq0 = map[timeBlock] - '0';
-                int freq1 = map[timeBlock+1] - '0';
-                int freq2 = map[timeBlock+2] - '0';
-                int freq3 = map[timeBlock+3] - '0';
-                int freq4 = map[timeBlock+4] - '0';
+                int freq0 = (int) map[timeBlock];
+                int freq1 = (int) map[timeBlock+1];
+                int freq2 = (int) map[timeBlock+2];
+                int freq3 = (int) map[timeBlock+3];
+                int freq4 = (int) map[timeBlock+4];
                 printf("freq0: %d\n",freq0);
                 printf("freq1: %d\n",freq1);
                 printf("freq2: %d\n",freq2);
@@ -646,7 +650,9 @@ parent_loop(int fd) {
                 printf("freq4: %d\n",freq4);
 
 
-                printf("Histogram for Given Time Block: \n");
+                
+                printf("Histogram for Given Time Block: ");
+                printf("\n");
                 printf("BPM    0 through 40: ");
                 while(freq0!=0){
                     printf("X");
@@ -689,7 +695,9 @@ parent_loop(int fd) {
                 printf("%zu characters were read.\n",bytes_in);
                 // prints command that was typed
                 printf("You typed: %s\n",buffer);
-                int hourVal = (int) buffer[5] - '0';
+                char* hourString = buffer;
+                int hourVal = atoi(hourString);
+
                 memset(buffer,0,buffer_size);
                 printf("Enter Minute: ");
                 // gets number of bytes in and puts them into the buffer
@@ -699,37 +707,43 @@ parent_loop(int fd) {
                 printf("%zu characters were read.\n",bytes_in);
                 // prints command that was typed
                 printf("You typed: %s\n",buffer);
-                int minuteVal = (int) buffer[5] - '0';
+                char *minuteString = buffer;
+                int minuteVal = atoi(minuteString);
+
                 memset(buffer,0,buffer_size);
 
 
                 int val = 0;
 
+                 int timeBlock = ((hourVal) * 20);
+
                 if((0<=minuteVal)&&(minuteVal<15)){
                     val = 0;
+                    timeBlock = timeBlock + val;
 
                 }
                 else if((15<=minuteVal)&&(minuteVal<30)){
                     val = 1;
+                    timeBlock = timeBlock + (val*5);
 
                 }
                 else if((30<=minuteVal)&&(minuteVal<45)){
                     val = 2;
+                    timeBlock = timeBlock + (val*5);
 
                 }
                 else if((45<=minuteVal)&&(minuteVal<60)){
                     val = 3;
+                    timeBlock = timeBlock + (val*5);
                 }
+                printf("timeBlock: %d \n",timeBlock);
+                
 
-                int timeBlock = (hourVal * 5);
-                timeBlock = timeBlock + val;
-
-
-                int freq0 = (int) map[timeBlock] - '0';
-                int freq1 = (int) map[timeBlock+1] - '0';
-                int freq2 = (int) map[timeBlock+2] - '0';
-                int freq3 = (int) map[timeBlock+3] - '0';
-                int freq4 = (int) map[timeBlock+4] - '0';
+                int freq0 = (int) map[timeBlock];
+                int freq1 = (int) map[timeBlock+1];
+                int freq2 = (int) map[timeBlock+2];
+                int freq3 = (int) map[timeBlock+3];
+                int freq4 = (int) map[timeBlock+4];
                 printf("freq0: %d\n",freq0);
                 printf("freq1: %d\n",freq1);
                 printf("freq2: %d\n",freq2);
@@ -737,8 +751,9 @@ parent_loop(int fd) {
                 printf("freq4: %d\n",freq4);
 
 
-                /*
+                
                 printf("Histogram for Given Time Block: ");
+                printf("\n");
                 printf("BPM    0 through 40: ");
                 while(freq0!=0){
                     printf("X");
@@ -769,7 +784,7 @@ parent_loop(int fd) {
                     freq4--;
                 }
                 printf("\n");
-                */
+                
             }
             // reset: Clear all data from the backing file 
             else if(strcmp(buffer,reset)==0){
@@ -859,13 +874,11 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     hourVar = (int) hour;
     minuteVar = (int) minute;
+    // printf("hourVar: %d \n",hourVar);
+    // printf("minuteVar: %d \n",minuteVar);
 
-    int firstIndex = -1;
 
 
-    
-
-    printf("\n");
     //printHist(hist);
 
     // 1st index is hour
@@ -874,27 +887,37 @@ send_cmd(int fd, char *cmd, size_t len) {
     // between 30 and 45 equal to hour + 2 
     // between 45 and 60 equal to hour + 3 
 
+
+    int index = hourVar * 20;
+    
+    int val; 
+
     if((minuteVar >= 0)&&(minuteVar<15)){
-        firstIndex = hourVar * 4;
+        val = 0; 
+        index = index + val;
 
     }
     else if((minuteVar>=15)&&(minuteVar<30)){
-        firstIndex = (hourVar * 4) + 1;
+        val = 5;
+        index = index + val;
     }
     else if((minuteVar>=30)&&(minuteVar<45)){
-        firstIndex = (hourVar * 4) + 2;
+        val = 10;
+        index = index + val;
     }
     else if((minuteVar>=45)&&(minuteVar<60)){
-        firstIndex = (hourVar * 4) + 3;
+        val = 15;
+        index = index + val;
 
     }
 
-    int secondIndex = -1;
+     
+
 
     // Hour is first interval
     if((0 >= BPM)&&(BPM <= 40)){
         //  2nd index is 0 
-        secondIndex = 0;
+        map[index]++;
         // outlier reading (heart rate too low)
         // sends LOW\r to arduino to print warning to screen
         // char *low = "LOW\r";
@@ -904,19 +927,18 @@ send_cmd(int fd, char *cmd, size_t len) {
     }
     else if((41 >= BPM)&&(BPM <= 80)){
         // 2nd index is 1 
-        secondIndex = 1;
+        map[index+1]++;
     }
     else if((81 >= BPM)&&(BPM <= 120)){
         // 2nd index is 2 
-        secondIndex = 2;
+        map[index+2]++;
     }
     else if((121 >= BPM)&&(BPM <= 160)){
         // 2nd index is 3 
-        secondIndex = 3;
+        map[index+3]++;
     }
     else if(BPM >= 160){
-        // 2nd index is 4 
-        secondIndex = 4;
+        map[index+4]++;
         // outlier reading 
         // send a command to arduino to print warning to screen   
         // char *high = "HIG\r";
@@ -925,26 +947,7 @@ send_cmd(int fd, char *cmd, size_t len) {
         
     }
 
-
-    hist[firstIndex][secondIndex]++;
-
-
-    
-    mapWrite();
-    int i;
-    int j;
-    int index = 0;
-    for(i=0;i<96;i++){
-        for(j=0;j<5;j++){
-            map[index] = (char) hist[i][j] + '0';
-            // printf("index %d: %c\n", index, map[index]);
-            index++;
-        }
-    }
-
-
     mapSync();
-        
 
 
     return count;
@@ -959,7 +962,6 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     char buf[64]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
-    printf("Got here.\n");
     if (write(fd, cmd, len) == -1) {
         printf("Serial write error.\n");
         // perror("serial-write");
@@ -983,19 +985,18 @@ send_cmd_env(int fd, char *cmd, size_t len) {
         return -1;
     }
     */
-
-    char temperature;
-    char humidity;
-
-    temperature = buf[0];
-    humidity = buf[1];
+    float temperature;
+    float humidity;
+    temperature = (float) buf[0];
+    temperature = temperature * 1.8;
+    temperature = temperature + 32;
+    humidity = (float) buf[1];
     
 
-    tempVar = (int) temperature;
-    humidVar = (int) humidity;
 
-    printf("Temperature: %d\n",tempVar);
-    printf("Humidity: %d\n",humidVar);
+    printf("Temperature in Farenheit: %f\n",temperature);
+    printf("Humidity Percentage: %f\n",humidity);
+    
     
     return count;
 }
