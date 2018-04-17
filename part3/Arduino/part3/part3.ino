@@ -53,7 +53,7 @@ int fadeRate = 0;                 // used to fade LED on with PWM on fadePin
 int prevBPM = 0;                  // previously stored BPM value 
 
 String command; // String that reads in command from terminal 
-String showX = "shX\r"; // string for showX command 
+String showX = "shX"; // string for showX command 
 String pause = "PAU\r"; // string for pause command 
 String resume_var = "RES\r"; // string for resume command 
 String write_var = "WRT\r";
@@ -184,13 +184,13 @@ void loop(){
     /* Part 3: showX: Set the output device to show X as the current heart rate instead of the current 
      *  real-time value. In addition, print the value to the console.
      */
-    else if(command.equals(showX)){
+    else if(showX.equals(command.substring(0,3))){
       paused = true;
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.write("BPM: ");
       lcd.setCursor(0,1);
-      lcd.print("X");
+      lcd.print(command.substring(3));
      // Serial.write(BPM);
       Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
      // Serial.flush();

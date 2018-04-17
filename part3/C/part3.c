@@ -39,6 +39,7 @@ int pid; //Forks the program.
 // Global variables to store information from sensors 
 int hourVar; // hour 
 int minuteVar; // minute 
+int secondVar; // second
 int tempVar; // temperature 
 int humidVar; // humidity 
 const char *filepath = "/tmp/mmapped.txt"; // mmap file path 
@@ -53,7 +54,8 @@ int pipeFd2[2];
 
 // Writes values to map 
 void mapWrite(){
-    mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+
+    mapfd = open(filepath, O_RDWR | O_CREAT, (mode_t)0600);
     if (mapfd == -1){
         perror("Error opening file for writing\n");
     }
@@ -117,7 +119,7 @@ void mapRead(){
     }
 
     struct stat fileInfo;
-
+ 
     if (fstat(mapfd, &fileInfo) == -1)
     {
         perror("Error getting the file size");
@@ -439,7 +441,6 @@ parent_loop(int fd) {
         // Set of strings which are sent to the arduino
         // These strings are compared in the arduino code
         // and the corresponding function is performed.
-        char *command1 = "shX\r";
         char *command2 = "PAU\r";
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
@@ -500,14 +501,35 @@ parent_loop(int fd) {
              // instead of the current real-time value.
              char pipeBuf[5];
             if(strcmp(buffer,showX)==0){
-                size_t c1 = strlen(command1);
+
+
+                char *command1 = "shX";
+                char* newCommand = command1;
+
+                printf("Enter X: ");
+                // gets number of bytes in and puts them into the buffer
+                bytes_in = getline(&buffer,&buffer_size,stdin);
+                printf("\n");
+                // prints number of characters read
+                printf("%zu characters were read.\n",bytes_in);
+                // prints command that was typed
+                printf("You typed: %s\n",buffer);
+                sprintf(buffer,"\r");
+                sprintf(newCommand, "%s", buffer);
+
+
+        
+                printf("newCommand: %s\n",newCommand);
+
+
+                size_t c1 = strlen(newCommand);
                 write(pipeFd[1], "x", 1);
                 // printf("wrote to pipe\n");
                 read(pipeFd2[0], pipeBuf, 1);
                 // printf("Read from pipe\n");
                 // printf("%s\n", pipeBuf);
                 while(pipeBuf[0]!='s'){}
-                n = send_cmd(fd,command1,c1);
+                n = send_cmd(fd,newCommand,c1);
                 write(pipeFd[1], "r", 1);
                 if(n>0){
                     ret = 0;
@@ -517,6 +539,8 @@ parent_loop(int fd) {
                 }
                 // print the value to the console.
                 printf("BPM: %d\n",BPM);
+
+                memset(buffer,0,buffer_size);
             }
             // char *command2 = "PAU\r";
             /*pause: Pause the output and keep the display device showing the
@@ -609,9 +633,6 @@ parent_loop(int fd) {
                     ret = 1;
                 }
 
-                printf("hourVar: %d\n",hourVar);
-                printf("minuteVar: %d\n",minuteVar);
-
                 int val = 0;
 
                  int timeBlock = ((hourVar) * 20);
@@ -643,11 +664,6 @@ parent_loop(int fd) {
                 int freq2 = (int) map[timeBlock+2];
                 int freq3 = (int) map[timeBlock+3];
                 int freq4 = (int) map[timeBlock+4];
-                printf("freq0: %d\n",freq0);
-                printf("freq1: %d\n",freq1);
-                printf("freq2: %d\n",freq2);
-                printf("freq3: %d\n",freq3);
-                printf("freq4: %d\n",freq4);
 
 
                 
@@ -788,13 +804,9 @@ parent_loop(int fd) {
             }
             // reset: Clear all data from the backing file 
             else if(strcmp(buffer,reset)==0){
-                int len = 481;
-                void *address;
-                // 0 is offset 
-                address = mmap(NULL,len, PROT_READ, MAP_SHARED, mapfd, 0);
-                munmap(address,len);
-                close(mapfd);
-                unlink(filepath);
+                size_t mapSize = 480;
+                memset(map, 0, mapSize);
+                mapSync();
                 printf("Data cleared!\n");
 
 
@@ -855,6 +867,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     char *high;
     char hour;
     char minute;
+    char second;
 
 
 
@@ -864,6 +877,7 @@ send_cmd(int fd, char *cmd, size_t len) {
         high = "HIG\r";
         hour = buf[1];
         minute = buf[2];
+        second = buf[3];
         BPM = (int)BPMchar;
     }
     else {
@@ -874,8 +888,8 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     hourVar = (int) hour;
     minuteVar = (int) minute;
-    // printf("hourVar: %d \n",hourVar);
-    // printf("minuteVar: %d \n",minuteVar);
+    secondVar = (int) second;
+    // printf("Time: %d:%d:%d \n",hourVar,minuteVar,secondVar);
 
 
 
@@ -987,15 +1001,20 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     */
     float temperature;
     float humidity;
-    temperature = (float) buf[0];
+    char tmp = buf[0];
+    temperature = (float) tmp;
     temperature = temperature * 1.8;
     temperature = temperature + 32;
+    temperature = temperature - '0';
     humidity = (float) buf[1];
+    if(humidity < 0){
+        humidity = humidity * -1;
+    }
     
 
 
-    printf("Temperature in Farenheit: %f\n",temperature);
-    printf("Humidity Percentage: %f\n",humidity);
+    printf("Temperature in Farenheit: %.2f \n",temperature);
+    printf("Humidity: %.2f Percent\n",humidity);
     
     
     return count;
