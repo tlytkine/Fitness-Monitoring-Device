@@ -61,6 +61,7 @@ String env_var = "ENV\r"; // environment sensor variable
 String low = "LOW\r";
 String high = "HIG\r";
 String hist = "HST\r";
+String dateCmd  = "DTE\r";
 
 
 // Volatile Variables, used in the interrupt service routine!
@@ -269,6 +270,14 @@ void loop(){
       Serial.write(minuteGet);
       Serial.write(secondGet);
       Serial.write("\n");
+    }
+    else if(command.equals(dateCmd)){
+      readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
+      Serial.write(dayOfMonthGet);
+      Serial.write(monthGet);
+      Serial.write(yearGet);
+      Serial.write("\n");
+      
     }
   }
   

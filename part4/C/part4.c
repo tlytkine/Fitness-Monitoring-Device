@@ -33,6 +33,7 @@ int parent_loop(int fd); // contains program with prompt to send commands from t
 int child_loop(int fd);
 int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino
 int send_cmd_env(int fd, char *cmd, size_t len);  // second method to send / receive commands for environment sensor 
+int send_cmd_date(int fd, char *cmd, size_t len); // method to get date from arduino and print to console
 int readline(int serial_fd, char *buf);  
 int pid; //Forks the program.
 
@@ -162,6 +163,49 @@ main(int argc, char **argv) {
     int ret;
     //char *file;
     //int mapfile;
+
+    // Create a pointer to our new db
+    // sqlite3* db;
+
+    // Open the database with the name 'test.db'
+    // int retSQL = sqlite3_open("test.db",&db);
+
+//    int (ret != SQLITE_OK){
+  //      printf("Error connecting to database.\n");
+    //}
+
+    // Data can now be inserted / queries can now be executed on db 
+
+
+    // BELOW USED FOR QUERIES THAT DONT RETURN ANYTING (CREATE_TABLE, INSERT)
+    // Execute a query (Simple - no callback())
+    // char *sql = (String containing sql query)
+    // int ret1;
+    // char *errMsg;
+
+    // Execute the given query on the db, errMsg populated with any error messages 
+    // ret1 = sqlite3_exec(db,sql,NULL,0,&errMsg);
+
+    // if(ret != SQLITE_OK){
+        // fprintf(stderr, "SQL error: %s\n",errMsg);
+        // sqlite3_free(errMsg);
+    //}
+
+    // Create Table example 
+    // Will check if the table already exists, and if not will create it 
+    // char* sql = "CREATE TABLE IF NOT EXISTS HR_DATA("\
+    //                "ID INT PRIMARY KEY NOT NULL," \
+     //               "HR INT," \
+      //              "...," \
+      //              "...,");
+    // last slide of lab to sqlite3_exec() this query, to actually create the table 
+
+    // Inserting data 
+    // char sql[200];
+    // sprintf(sql, "INSERT INTO DATA(A,B) VALUES(%d,%d)",a,b);
+    // sqlite3_exec() to actually insert the data 
+
+                    // slide 6 to continue 
 
 
    // mapRead();
@@ -435,6 +479,10 @@ parent_loop(int fd) {
         char *histX = "histX\n";
         char *reset = "reset\n";
         char *exit = "exit\n"; 
+        char *date = "date\n";
+        char *regressionX = "regressionX\n"; 
+        char *statX = "statX\n";
+
 
         // Set of strings which are sent to the arduino
         // These strings are compared in the arduino code
@@ -445,6 +493,7 @@ parent_loop(int fd) {
         char *command4 = "WRT\r";
         char *command5 = "ENV\r";
         char *command6 = "HST\r";
+        char *command7 = "DTE\r"; // date command to send to arduino
         
 
 
@@ -460,15 +509,19 @@ parent_loop(int fd) {
         while(running!=0){
             // *  - Prompt user for input
             printf("Please input one of the following options\n");
-            printf("showX\n"); // 1
-            printf("pause\n"); // 2
-            printf("resume\n"); 
-            printf("rate\n");
+            printf("date\n");
             printf("env\n");
-            printf("hist\n");
+            printf("exit\n");
             printf("histX\n");
-            printf("reset\n");
-            printf("exit\n"); 
+            printf("pause\n"); 
+            printf("rate\n");
+            printf("regressionX\n");
+            printf("reset\n"); 
+            printf("resume\n"); 
+            printf("showX\n"); 
+            printf("statX\n");
+            printf("hist\n");
+            
             printf("\n");
             
             // gets number of bytes in and puts them into the buffer
@@ -808,6 +861,33 @@ parent_loop(int fd) {
                 running = 0; // exits loop upon user entering exit
 
             }
+            // date: Show the current value of the real-time clock on the console
+            else if(strcmp(buffer,date)==0){
+                size_t c7 = strlen(command7);
+                n = send_cmd_date(fd,command7,c7);
+
+            }
+
+            // regression X: Calculate a linear regression between the 
+            // environment and heart rate data for a given time block.
+            // Print the regression and the appropriate coeffienct of 
+            // determination (r^2). If  is not provided,
+            // default to the current time block. 
+            // LINEAR REGRESSION FUNCTION !!!!!!
+            else if(strcmp(buffer,regressionX)==0){
+
+
+            }
+            // stat X: Print the following statistics 
+            // for a given time block. (for both heart rate and 
+            // environment data): reading count, mean, median,
+            // mode, standard deviation. If X is not provided default 
+            // to the current time block. 
+            else if(strcmp(buffer,statX)==0){
+
+
+            }
+
 
     }
         return ret;
@@ -996,6 +1076,73 @@ send_cmd_env(int fd, char *cmd, size_t len) {
 
     printf("Temperature in Farenheit: %f\n",temperature);
     printf("Humidity Percentage: %f\n",humidity);
+    
+    
+    return count;
+}
+
+
+int
+send_cmd_date(int fd, char *cmd, size_t len) {
+    int count; // number of bytes received as a response from the arduino
+    char buf[64]; // buffer to store response from arduino
+    // this if statement sends the command to the arduino and
+    // returns an error upon failure
+    if (write(fd, cmd, len) == -1) {
+        printf("Serial write error.\n");
+        // perror("serial-write");
+        return -1;
+    }
+
+    // Give the data time to transmit
+    // Serial is slow...
+    sleep(1);
+    // response read in, number of bytes read set equal to count
+    
+    count = read(fd, buf, sizeof(buf));
+    // Error if read fails or no response is received
+    if (count == -1) {
+        perror("serial-read");
+        return -1;
+    } 
+    /*
+    else if (count == 0) {
+        fprintf(stderr, "No data returned\n");
+        return -1;
+    }
+    */
+
+    printf("buf: %s\n",buf);
+
+    printf("buf[0] %c\n",buf[0]);
+    printf("buf[1] %c\n",buf[1]);
+    printf("buf[2] %c\n",buf[2]);
+    printf("buf[3] %c\n",buf[3]);
+    printf("buf[4] %c\n",buf[4]);
+
+    char dayChar = buf[0];
+    char monthChar = buf[1];
+    char yearChar = buf[2];
+
+    printf("dayChar %c\n",dayChar);
+    printf("monthChar %c\n",monthChar);
+    printf("yearChar %c\n",yearChar);
+
+
+    int day = dayChar - '0';
+    int month = monthChar - '0';
+    int year = yearChar - '0';
+
+    printf("day: %d\n",day);
+    printf("month: %d\n",month);
+    printf("year: %d\n",year);
+
+
+
+    printf("Date: %d/%d/%d \n",month,day,year);
+
+
+    
     
     
     return count;

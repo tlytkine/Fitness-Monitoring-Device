@@ -53,7 +53,7 @@ int fadeRate = 0;                 // used to fade LED on with PWM on fadePin
 int prevBPM = 0;                  // previously stored BPM value 
 
 String command; // String that reads in command from terminal 
-String showX = "shX\r"; // string for showX command 
+String showX = "shX"; // string for showX command 
 String pause = "PAU\r"; // string for pause command 
 String resume_var = "RES\r"; // string for resume command 
 String write_var = "WRT\r";
@@ -61,6 +61,7 @@ String env_var = "ENV\r"; // environment sensor variable
 String low = "LOW\r";
 String high = "HIG\r";
 String hist = "HST\r";
+String dateCmd  = "DTE\r";
 
 
 // Volatile Variables, used in the interrupt service routine!
@@ -112,14 +113,36 @@ void setup(){
   byte dayOfWeekSet = 2; // 1 Sunday, 7 Saturday 
   byte dayOfMonthSet = system_time[5];
   byte monthSet = 04;
-  byte yearSet = 18;
+  byte yearSet = 23;
   /*lcd.print(system_time);
   lcd.print(" ");
   lcd.print(hourSet);
   lcd.print(minuteSet);
   lcd.print(secondSet);
   */
+
+
+  // look over and change to make sure all values are set right 
   setDS3231time(secondSet,minuteSet,hourSet,dayOfWeekSet,dayOfMonthSet,monthSet,yearSet);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Day: ");
+  lcd.setCursor(0,1);
+  lcd.print(dayOfMonthSet);
+  delay(500);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Month: ");
+  lcd.setCursor(0,1);
+  lcd.print(monthSet);
+  delay(500);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Year: ");
+  lcd.setCursor(0,1);
+  lcd.print(yearSet); // year has the day 
+  delay(500);
+  
 
   
 }
@@ -184,13 +207,13 @@ void loop(){
     /* Part 3: showX: Set the output device to show X as the current heart rate instead of the current 
      *  real-time value. In addition, print the value to the console.
      */
-    else if(command.equals(showX)){
+    else if(showX.equals(command.substring(0,3))){
       paused = true;
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.write("BPM: ");
       lcd.setCursor(0,1);
-      lcd.print("X");
+      lcd.print(command.substring(3));
      // Serial.write(BPM);
       Serial.write("\n");                                                                                                                                                                                                                                                                                                                                                                                                   Serial.write("\n");
      // Serial.flush();
@@ -269,6 +292,31 @@ void loop(){
       Serial.write(minuteGet);
       Serial.write(secondGet);
       Serial.write("\n");
+    }
+   //  String dateCmd  = "DTE\r";
+    else if(command.equals(dateCmd)){
+      readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Day: ");
+      lcd.setCursor(0,1);
+      lcd.print(dayOfMonthGet);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Month: ");
+      lcd.setCursor(0,1);
+      lcd.print(monthGet);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Day: ");
+      lcd.setCursor(0,1);
+      lcd.print(yearGet);
+
+      Serial.write(dayOfMonthGet);
+      Serial.write(monthGet);
+      Serial.write(yearGet);
+      Serial.write("\n");
+      
     }
   }
   
