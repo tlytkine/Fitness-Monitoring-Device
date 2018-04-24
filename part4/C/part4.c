@@ -1096,9 +1096,9 @@ send_cmd_date(int fd, char *cmd, size_t len) {
 
     // Give the data time to transmit
     // Serial is slow...
-    sleep(1);
+    sleep(2);
     // response read in, number of bytes read set equal to count
-    
+    memset(buf, 0, 64);
     count = read(fd, buf, sizeof(buf));
     // Error if read fails or no response is received
     if (count == -1) {
@@ -1111,35 +1111,43 @@ send_cmd_date(int fd, char *cmd, size_t len) {
         return -1;
     }
     */
+    char month;
+    char day;
+    char year;
 
-    printf("buf: %s\n",buf);
+    int x = 4;
 
-    printf("buf[0] %c\n",buf[0]);
-    printf("buf[1] %c\n",buf[1]);
-    printf("buf[2] %c\n",buf[2]);
-    printf("buf[3] %c\n",buf[3]);
-    printf("buf[4] %c\n",buf[4]);
+    for(int i=0; i<64; i++){
+        if(buf[i]=='\n'){
+            x = i;
+            break;
+        }
+    }
 
-    char dayChar = buf[0];
-    char monthChar = buf[1];
-    char yearChar = buf[2];
-
-    printf("dayChar %c\n",dayChar);
-    printf("monthChar %c\n",monthChar);
-    printf("yearChar %c\n",yearChar);
-
-
-    int day = dayChar - '0';
-    int month = monthChar - '0';
-    int year = yearChar - '0';
-
-    printf("day: %d\n",day);
-    printf("month: %d\n",month);
-    printf("year: %d\n",year);
+    
+    printf("%d\n",(int) buf[x-4]); // A
+    printf("%d\n",(int) buf[x-3]); // Day
+    printf("%d\n",(int) buf[x-2]); // Month
+    printf("%d\n",(int) buf[x-1]); // Year 
+    
+    
 
 
 
-    printf("Date: %d/%d/%d \n",month,day,year);
+
+    if(buf[x] == '\n'){
+        printf("%c\n",buf[0]);
+        day = buf[x-3];
+        month = buf[x-2];
+        year = buf[x-1];
+    }
+    else {
+        month = 'M';
+        day = 'D';
+        year = 'Y';
+
+    }
+    printf("Date: %c/%c/%c \n",month,day,year);
 
 
     

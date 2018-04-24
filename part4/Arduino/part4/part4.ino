@@ -107,13 +107,13 @@ void setup(){
 
 
   // might need to be byte *
-  byte secondSet = ((int)system_time[6]-48)*10 + (int)system_time[7]-48;
+  byte secondSet = (((int)system_time[6]-48)*10) + ((int)system_time[7]-48);
   byte minuteSet = ((int)system_time[3]-48)*10 + (int)system_time[4]-48;
   byte hourSet = ((int)system_time[0]-48)*10 + (int)system_time[1]-48;
-  byte dayOfWeekSet = 2; // 1 Sunday, 7 Saturday 
-  byte dayOfMonthSet = system_time[5];
-  byte monthSet = 04;
-  byte yearSet = 23;
+  byte dayOfWeekSet = 3; // 1 Sunday, 7 Saturday 
+  byte dayOfMonthSet = ((((int)system_date[4]-48)*10) + ((int)system_date[5]-48));
+  byte monthSet = 04; // 
+  byte yearSet =  ((((int)system_date[9])-48)*10) +  (int)system_date[10]-48;  
   /*lcd.print(system_time);
   lcd.print(" ");
   lcd.print(hourSet);
@@ -124,6 +124,9 @@ void setup(){
 
   // look over and change to make sure all values are set right 
   setDS3231time(secondSet,minuteSet,hourSet,dayOfWeekSet,dayOfMonthSet,monthSet,yearSet);
+
+  /*
+  
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Day: ");
@@ -142,6 +145,7 @@ void setup(){
   lcd.setCursor(0,1);
   lcd.print(yearSet); // year has the day 
   delay(500);
+  */
   
 
   
@@ -295,27 +299,35 @@ void loop(){
     }
    //  String dateCmd  = "DTE\r";
     else if(command.equals(dateCmd)){
+      lcd.write("Date");
+      delay(500);
       readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
+      delay(500);
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Day: ");
       lcd.setCursor(0,1);
       lcd.print(dayOfMonthGet);
+      delay(500);
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Month: ");
       lcd.setCursor(0,1);
       lcd.print(monthGet);
+      delay(500);
       lcd.clear();
       lcd.setCursor(0,0);
-      lcd.print("Day: ");
+      lcd.print("Year: ");
       lcd.setCursor(0,1);
       lcd.print(yearGet);
-
+      delay(500);
+      Serial.write("A");
       Serial.write(dayOfMonthGet);
       Serial.write(monthGet);
       Serial.write(yearGet);
       Serial.write("\n");
+      
+
       
     }
   }
