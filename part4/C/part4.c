@@ -33,13 +33,14 @@ int parent_loop(int fd); // contains program with prompt to send commands from t
 int child_loop(int fd);
 int send_cmd(int fd, char *cmd, size_t len); // method to send / receive commands and responses from terminal / arduino
 int send_cmd_env(int fd, char *cmd, size_t len);  // second method to send / receive commands for environment sensor 
-int send_cmd_date(int fd, char *cmd, size_t len); // method to get date from arduino and print to console
+int send_cmd_date(int fd, char *cmd, size_t len);  // second method to send / receive commands for RTC 
 int readline(int serial_fd, char *buf);  
 int pid; //Forks the program.
 
 // Global variables to store information from sensors 
 int hourVar; // hour 
 int minuteVar; // minute 
+int secondVar; // second
 int tempVar; // temperature 
 int humidVar; // humidity 
 const char *filepath = "/tmp/mmapped.txt"; // mmap file path 
@@ -54,7 +55,8 @@ int pipeFd2[2];
 
 // Writes values to map 
 void mapWrite(){
-    mapfd = open(filepath, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+
+    mapfd = open(filepath, O_RDWR | O_CREAT, (mode_t)0600);
     if (mapfd == -1){
         perror("Error opening file for writing\n");
     }
@@ -118,7 +120,7 @@ void mapRead(){
     }
 
     struct stat fileInfo;
-
+ 
     if (fstat(mapfd, &fileInfo) == -1)
     {
         perror("Error getting the file size");
@@ -164,7 +166,7 @@ main(int argc, char **argv) {
     //char *file;
     //int mapfile;
 
-    // Create a pointer to our new db
+// Create a pointer to our new db
     // sqlite3* db;
 
     // Open the database with the name 'test.db'
@@ -206,8 +208,6 @@ main(int argc, char **argv) {
     // sqlite3_exec() to actually insert the data 
 
                     // slide 6 to continue 
-
-
    // mapRead();
     mapWrite();
 	// printf("finished map read\n");
@@ -479,21 +479,15 @@ parent_loop(int fd) {
         char *histX = "histX\n";
         char *reset = "reset\n";
         char *exit = "exit\n"; 
-        char *date = "date\n";
-        char *regressionX = "regressionX\n"; 
-        char *statX = "statX\n";
-
 
         // Set of strings which are sent to the arduino
         // These strings are compared in the arduino code
         // and the corresponding function is performed.
-        char *command1 = "shX\r";
         char *command2 = "PAU\r";
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
         char *command5 = "ENV\r";
         char *command6 = "HST\r";
-        char *command7 = "DTE\r"; // date command to send to arduino
         
 
 
@@ -509,19 +503,15 @@ parent_loop(int fd) {
         while(running!=0){
             // *  - Prompt user for input
             printf("Please input one of the following options\n");
-            printf("date\n");
-            printf("env\n");
-            printf("exit\n");
-            printf("histX\n");
-            printf("pause\n"); 
-            printf("rate\n");
-            printf("regressionX\n");
-            printf("reset\n"); 
+            printf("showX\n"); // 1
+            printf("pause\n"); // 2
             printf("resume\n"); 
-            printf("showX\n"); 
-            printf("statX\n");
+            printf("rate\n");
+            printf("env\n");
             printf("hist\n");
-            
+            printf("histX\n");
+            printf("reset\n");
+            printf("exit\n"); 
             printf("\n");
             
             // gets number of bytes in and puts them into the buffer
@@ -553,14 +543,35 @@ parent_loop(int fd) {
              // instead of the current real-time value.
              char pipeBuf[5];
             if(strcmp(buffer,showX)==0){
-                size_t c1 = strlen(command1);
+
+
+                char *command1 = "shX";
+                char* newCommand = command1;
+
+                printf("Enter X: ");
+                // gets number of bytes in and puts them into the buffer
+                bytes_in = getline(&buffer,&buffer_size,stdin);
+                printf("\n");
+                // prints number of characters read
+                printf("%zu characters were read.\n",bytes_in);
+                // prints command that was typed
+                printf("You typed: %s\n",buffer);
+                sprintf(buffer,"\r");
+                sprintf(newCommand, "%s", buffer);
+
+
+        
+                printf("newCommand: %s\n",newCommand);
+
+
+                size_t c1 = strlen(newCommand);
                 write(pipeFd[1], "x", 1);
                 // printf("wrote to pipe\n");
                 read(pipeFd2[0], pipeBuf, 1);
                 // printf("Read from pipe\n");
                 // printf("%s\n", pipeBuf);
                 while(pipeBuf[0]!='s'){}
-                n = send_cmd(fd,command1,c1);
+                n = send_cmd(fd,newCommand,c1);
                 write(pipeFd[1], "r", 1);
                 if(n>0){
                     ret = 0;
@@ -570,6 +581,8 @@ parent_loop(int fd) {
                 }
                 // print the value to the console.
                 printf("BPM: %d\n",BPM);
+
+                memset(buffer,0,buffer_size);
             }
             // char *command2 = "PAU\r";
             /*pause: Pause the output and keep the display device showing the
@@ -662,9 +675,6 @@ parent_loop(int fd) {
                     ret = 1;
                 }
 
-                printf("hourVar: %d\n",hourVar);
-                printf("minuteVar: %d\n",minuteVar);
-
                 int val = 0;
 
                  int timeBlock = ((hourVar) * 20);
@@ -696,11 +706,6 @@ parent_loop(int fd) {
                 int freq2 = (int) map[timeBlock+2];
                 int freq3 = (int) map[timeBlock+3];
                 int freq4 = (int) map[timeBlock+4];
-                printf("freq0: %d\n",freq0);
-                printf("freq1: %d\n",freq1);
-                printf("freq2: %d\n",freq2);
-                printf("freq3: %d\n",freq3);
-                printf("freq4: %d\n",freq4);
 
 
                 
@@ -841,13 +846,9 @@ parent_loop(int fd) {
             }
             // reset: Clear all data from the backing file 
             else if(strcmp(buffer,reset)==0){
-                int len = 481;
-                void *address;
-                // 0 is offset 
-                address = mmap(NULL,len, PROT_READ, MAP_SHARED, mapfd, 0);
-                munmap(address,len);
-                close(mapfd);
-                unlink(filepath);
+                size_t mapSize = 480;
+                memset(map, 0, mapSize);
+                mapSync();
                 printf("Data cleared!\n");
 
 
@@ -861,10 +862,20 @@ parent_loop(int fd) {
                 running = 0; // exits loop upon user entering exit
 
             }
-            // date: Show the current value of the real-time clock on the console
+	    // date: Show the current value of the real-time clock on the console
             else if(strcmp(buffer,date)==0){
                 size_t c7 = strlen(command7);
+                write(pipeFd[1], "x", 1);
+                read(pipeFd2[0], pipeBuf, 1);
+                while(pipeBuf[0]!='s'){}
                 n = send_cmd_date(fd,command7,c7);
+                write(pipeFd[1], "r", 1);
+                if(n>0){
+                    ret = 0;
+                }
+                else{
+                    ret = 1;
+                }
 
             }
 
@@ -887,7 +898,6 @@ parent_loop(int fd) {
 
 
             }
-
 
     }
         return ret;
@@ -935,6 +945,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     char *high;
     char hour;
     char minute;
+    char second;
 
 
 
@@ -944,6 +955,7 @@ send_cmd(int fd, char *cmd, size_t len) {
         high = "HIG\r";
         hour = buf[1];
         minute = buf[2];
+        second = buf[3];
         BPM = (int)BPMchar;
     }
     else {
@@ -954,8 +966,8 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     hourVar = (int) hour;
     minuteVar = (int) minute;
-    // printf("hourVar: %d \n",hourVar);
-    // printf("minuteVar: %d \n",minuteVar);
+    secondVar = (int) second;
+    // printf("Time: %d:%d:%d \n",hourVar,minuteVar,secondVar);
 
 
 
@@ -1067,20 +1079,24 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     */
     float temperature;
     float humidity;
-    temperature = (float) buf[0];
+    char tmp = buf[0];
+    temperature = (float) tmp;
     temperature = temperature * 1.8;
     temperature = temperature + 32;
+    temperature = temperature - '0';
     humidity = (float) buf[1];
+    if(humidity < 0){
+        humidity = humidity * -1;
+    }
     
 
 
-    printf("Temperature in Farenheit: %f\n",temperature);
-    printf("Humidity Percentage: %f\n",humidity);
+    printf("Temperature in Farenheit: %.2f \n",temperature);
+    printf("Humidity: %.2f Percent\n",humidity);
     
     
     return count;
 }
-
 
 int
 send_cmd_date(int fd, char *cmd, size_t len) {
@@ -1155,8 +1171,6 @@ send_cmd_date(int fd, char *cmd, size_t len) {
     
     return count;
 }
-
-
 
 int
 init_tty(int fd) {
