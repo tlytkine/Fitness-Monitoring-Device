@@ -1,4 +1,4 @@
-#include <Adafruit_Si7021.h>
+//#include <Adafruit_Si7021.h>
 #include <LiquidCrystal.h> // Library used to interact with LCD 
 #include <Wire.h>
 
@@ -80,7 +80,7 @@ boolean paused = false; // Boolean that is changed based on commands sent from t
 
 static int outputType = SERIAL_PLOTTER;
 
-Adafruit_Si7021 sensor = Adafruit_Si7021(); // declares environment sensor 
+//Adafruit_Si7021 sensor = Adafruit_Si7021(); // declares environment sensor 
 int envPin1 = 4; // A4
 int envPin2 = 5; // A5 
 void interruptSetup();
@@ -94,7 +94,7 @@ void setup(){
   interruptSetup();                 // sets up to read Pulse Sensor signal every 2mS
   lcd.begin(16,2); // configures LCD with 16 columns and 2 rows 
   // Environment sensor code 
-  sensor.begin();
+//  sensor.begin();
   bool parse = false;
   bool config = false;
 
@@ -261,10 +261,10 @@ void loop(){
     // it to the console 
     else if(command.equals(env_var)){
 
-        char temperature = sensor.readTemperature();
-        char humidity = sensor.readHumidity();
-        Serial.write(temperature);
-        Serial.write(humidity);
+//        char temperature = sensor.readTemperature();
+//        char humidity = sensor.readHumidity();
+//        Serial.write(temperature);
+//        Serial.write(humidity);
         Serial.write("\n");
     }
     else if(command.equals(low)){
@@ -300,27 +300,27 @@ void loop(){
    //  String dateCmd  = "DTE\r";
     else if(command.equals(dateCmd)){
       lcd.write("Date");
-      delay(500);
+      //delay(500);
       readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
-      delay(500);
+      //delay(500);
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Day: ");
       lcd.setCursor(0,1);
       lcd.print(dayOfMonthGet);
-      delay(500);
+      //delay(500);
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Month: ");
       lcd.setCursor(0,1);
       lcd.print(monthGet);
-      delay(500);
+      //delay(500);
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Year: ");
       lcd.setCursor(0,1);
       lcd.print(yearGet);
-      delay(500);
+      //delay(500);
       Serial.write("A");
       Serial.write(dayOfMonthGet);
       Serial.write(monthGet);

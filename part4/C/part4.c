@@ -181,7 +181,7 @@ main(int argc, char **argv) {
 
     // BELOW USED FOR QUERIES THAT DONT RETURN ANYTING (CREATE_TABLE, INSERT)
     // Execute a query (Simple - no callback())
-    // char *sql = (String containing sql query)
+    // char *sql = (String containing sql query);
     // int ret1;
     // char *errMsg;
 
@@ -195,11 +195,11 @@ main(int argc, char **argv) {
 
     // Create Table example 
     // Will check if the table already exists, and if not will create it 
-    // char* sql = "CREATE TABLE IF NOT EXISTS HR_DATA("\
+    /* char* sql = "CREATE TABLE IF NOT EXISTS HR_DATA("\
     //                "ID INT PRIMARY KEY NOT NULL," \
      //               "HR INT," \
       //              "...," \
-      //              "...,");
+                    "...,");*/
     // last slide of lab to sqlite3_exec() this query, to actually create the table 
 
     // Inserting data 
@@ -479,15 +479,20 @@ parent_loop(int fd) {
         char *histX = "histX\n";
         char *reset = "reset\n";
         char *exit = "exit\n"; 
+        char *date = "date\n";
+        char *regressionX = "regressionX\n"; 
+        char *statX = "statX\n"; 
 
         // Set of strings which are sent to the arduino
         // These strings are compared in the arduino code
         // and the corresponding function is performed.
+        //char *command1 = "shX\r";
         char *command2 = "PAU\r";
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
         char *command5 = "ENV\r";
         char *command6 = "HST\r";
+        char *command7 = "DTE\r"; // date command to send to arduino
         
 
 
@@ -1101,9 +1106,10 @@ send_cmd_env(int fd, char *cmd, size_t len) {
 int
 send_cmd_date(int fd, char *cmd, size_t len) {
     int count; // number of bytes received as a response from the arduino
-    char buf[64]; // buffer to store response from arduino
+    char buf[5]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
+    tcflush(fd, TCIOFLUSH);
     if (write(fd, cmd, len) == -1) {
         printf("Serial write error.\n");
         // perror("serial-write");
@@ -1114,7 +1120,7 @@ send_cmd_date(int fd, char *cmd, size_t len) {
     // Serial is slow...
     sleep(2);
     // response read in, number of bytes read set equal to count
-    memset(buf, 0, 64);
+    //memset(buf, 0, 64);
     count = read(fd, buf, sizeof(buf));
     // Error if read fails or no response is received
     if (count == -1) {
@@ -1133,18 +1139,18 @@ send_cmd_date(int fd, char *cmd, size_t len) {
 
     int x = 4;
 
-    for(int i=0; i<64; i++){
+    /*for(int i=0; i<64; i++){
         if(buf[i]=='\n'){
             x = i;
             break;
         }
-    }
+    }*/
 
     
-    printf("%d\n",(int) buf[x-4]); // A
-    printf("%d\n",(int) buf[x-3]); // Day
-    printf("%d\n",(int) buf[x-2]); // Month
-    printf("%d\n",(int) buf[x-1]); // Year 
+    printf("%d\n",(int) buf[0]); // A
+    printf("%d\n",(int) buf[1]); // Day
+    printf("%d\n",(int) buf[2]); // Month
+    printf("%d\n",(int) buf[3]); // Year 
     
     
 
@@ -1153,17 +1159,19 @@ send_cmd_date(int fd, char *cmd, size_t len) {
 
     if(buf[x] == '\n'){
         printf("%c\n",buf[0]);
-        day = buf[x-3];
-        month = buf[x-2];
-        year = buf[x-1];
+        day = buf[1];
+        month = buf[2];
+        year = buf[3];
+	printf("Date: %d/%d/%d \n", buf[2], buf[1], buf[3]);
     }
     else {
         month = 'M';
         day = 'D';
         year = 'Y';
+	printf("Date: %c/%c/%c \n",month,day,year);
 
     }
-    printf("Date: %c/%c/%c \n",month,day,year);
+    
 
 
     
