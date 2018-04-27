@@ -12,6 +12,7 @@
 #include <sys/mman.h>
 #include <string.h> 
 #include <signal.h>
+#include <sqlite3.h>
 
 // Specifies what to return / print upon an error
 #define ERROR(x) \
@@ -153,30 +154,24 @@ void mapRead(){
         // Don't forget to free the mmapped memory
 
 }
+sqlite3* db; //pointer to our new db
+int retSQL;
 
 
+int dbInit(){
+	// Open the database with the name 'test.db'
+	retSQL = sqlite3_open("test.db",&db);
+	if (retSQL != SQLITE_OK){
+        printf("Error connecting to database.\n");
+		return -1;
+    }
 
-int
-main(int argc, char **argv) {
-
-    Pre = clock(); // counts amount of seconds that have passed 
-    int fd;
-    char *device;
-    int ret;
-    //char *file;
-    //int mapfile;
-
-// Create a pointer to our new db
-    // sqlite3* db;
-
-    // Open the database with the name 'test.db'
-    // int retSQL = sqlite3_open("test.db",&db);
-
-//    int (ret != SQLITE_OK){
-  //      printf("Error connecting to database.\n");
-    //}
-
-    // Data can now be inserted / queries can now be executed on db 
+	char* sql = "CREATE TABLE IF NOT EXISTS Datapoint("\
+				"BPM INT,"\
+				"Temperature float."\
+				"timeblock int,"\
+				"recTime time)";
+	// Data can now be inserted / queries can now be executed on db 
 
 
     // BELOW USED FOR QUERIES THAT DONT RETURN ANYTING (CREATE_TABLE, INSERT)
@@ -208,23 +203,27 @@ main(int argc, char **argv) {
     // sqlite3_exec() to actually insert the data 
 
                     // slide 6 to continue 
-   // mapRead();
-    mapWrite();
-	// printf("finished map read\n");
+	return 0;
+}
 
+int
+main(int argc, char **argv) {
+
+    Pre = clock(); // counts amount of seconds that have passed 
+    int fd;
+    char *device;
+    int ret;
+	if(dbInit() < 0) exit(1);
     
 
+    mapWrite();
+
     // Connection established to port on /dev/tty.usbmodem1411
-    if (argc == 3) {
-        device = argv[1];
-        //file = argv[2];
-        //mapfile = open(file, O_RDONLY);
-    }
-    else if(argc == 2){
+ 
+    if(argc == 2){
         //device = "/dev/tty.usbmodem1411";
-	//device = "/dev/ttyACM0";
-	device = argv[1];
-        //mapfile = open(file, O_RDONLY);
+		//device = "/dev/ttyACM0";
+		device = argv[1];
     }
     else {
         printf("Usage: ./part2.o [device] [filename]");
