@@ -966,7 +966,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     else {
         return -1;
     }
-
+	//printf("%d\n", BPM);
 
 
     hourVar = (int) hour;
@@ -1012,7 +1012,8 @@ send_cmd(int fd, char *cmd, size_t len) {
 
 
     // Hour is first interval
-    if((0 >= BPM)&&(BPM <= 40)){
+    if(BPM <= 40){
+	//printf("0 through 40\n");
         //  2nd index is 0 
         map[index]++;
         // outlier reading (heart rate too low)
@@ -1022,19 +1023,23 @@ send_cmd(int fd, char *cmd, size_t len) {
         size_t lowCommand = strlen(low);
         send_cmd(fd,low,lowCommand);
     }
-    else if((41 >= BPM)&&(BPM <= 80)){
+    else if((BPM >= 41)&&(BPM <= 80)){
+	//printf("41 through 80\n");
         // 2nd index is 1 
         map[index+1]++;
     }
-    else if((81 >= BPM)&&(BPM <= 120)){
+    else if((81 <= BPM)&&(BPM <= 120)){
+	//printf("81 through 120\n");
         // 2nd index is 2 
         map[index+2]++;
     }
-    else if((121 >= BPM)&&(BPM <= 160)){
+    else if((121 <= BPM)&&(BPM <= 160)){
+	//printf("121 through 160\n");
         // 2nd index is 3 
         map[index+3]++;
     }
     else if(BPM >= 160){
+	//printf("above 160\n");
         map[index+4]++;
         // outlier reading 
         // send a command to arduino to print warning to screen   

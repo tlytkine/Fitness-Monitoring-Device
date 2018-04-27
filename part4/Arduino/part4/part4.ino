@@ -299,11 +299,11 @@ void loop(){
     }
    //  String dateCmd  = "DTE\r";
     else if(command.equals(dateCmd)){
-      lcd.write("Date");
+      //lcd.write("Date");
       //delay(500);
       readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
       //delay(500);
-      lcd.clear();
+      /*lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Day: ");
       lcd.setCursor(0,1);
@@ -320,7 +320,7 @@ void loop(){
       lcd.print("Year: ");
       lcd.setCursor(0,1);
       lcd.print(yearGet);
-      //delay(500);
+      //delay(500);*/
       Serial.write("A");
       Serial.write(dayOfMonthGet);
       Serial.write(monthGet);
