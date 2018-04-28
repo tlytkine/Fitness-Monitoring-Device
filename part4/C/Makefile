@@ -1,13 +1,13 @@
 # Specifies gcc as compiler 
 CC = gcc 
 
-# Compiler flags: -g -Wall -pedantic -Werror -Wextra 
+# Compiler flags: -g -Wall -pedantic -Werror 
 # -g to make file debuggable 
 # -Wall turns on compiler warnings 
 # -pedantic
 # -Werror 
 # -Wextra
-CFLAGS = -g -Wall -pedantic -Werror -Wextra 
+CFLAGS = -g -Wall -pedantic -Werror -lsqlite3
 
 # name of executable file 
 EXEC = part4

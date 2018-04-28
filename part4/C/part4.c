@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <sqlite3.h>
 
+
 // Specifies what to return / print upon an error
 #define ERROR(x) \
     do { \
@@ -36,6 +37,9 @@ int send_cmd(int fd, char *cmd, size_t len); // method to send / receive command
 int send_cmd_env(int fd, char *cmd, size_t len);  // second method to send / receive commands for environment sensor 
 int send_cmd_date(int fd, char *cmd, size_t len);  // second method to send / receive commands for RTC 
 int readline(int serial_fd, char *buf);  
+void tostring(char [], int);
+int dbConnect();
+int dbClose();
 int pid; //Forks the program.
 
 // Global variables to store information from sensors 
@@ -51,6 +55,9 @@ int BPM; // BPM value
 
 int pipeFd[2];
 int pipeFd2[2];
+float temperature;
+int timeBlock;
+char recTime[5];
 
 
 
@@ -155,55 +162,60 @@ void mapRead(){
 
 }
 sqlite3* db; //pointer to our new db
-int retSQL;
+
 
 
 int dbInit(){
+    int retSQL;
 	// Open the database with the name 'test.db'
 	retSQL = sqlite3_open("test.db",&db);
 	if (retSQL != SQLITE_OK){
-        printf("Error connecting to database.\n");
-		return -1;
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+    else {
+        printf("Database connection successful!\n");
     }
 
-	char* sql = "CREATE TABLE IF NOT EXISTS Datapoint("\
+	char *sql = "CREATE TABLE IF NOT EXISTS Datapoint("\
 				"BPM INT,"\
-				"Temperature float."\
-				"timeblock int,"\
-				"recTime time)";
-	// Data can now be inserted / queries can now be executed on db 
+				"Temperature FLOAT(9,6),"\
+				"timeblock INT,"\
+				"recTime TIME);";
+    int ret1;
+
+    char *errMsg;
+
+    ret1 = sqlite3_exec(db,sql,NULL,0,&errMsg);
+
+    if(ret1 != SQLITE_OK){
+        fprintf(stderr, "SQL error: %s\n",errMsg);
+        sqlite3_free(errMsg);
+    }
 
 
-    // BELOW USED FOR QUERIES THAT DONT RETURN ANYTING (CREATE_TABLE, INSERT)
-    // Execute a query (Simple - no callback())
-    // char *sql = (String containing sql query);
-    // int ret1;
-    // char *errMsg;
-
-    // Execute the given query on the db, errMsg populated with any error messages 
-    // ret1 = sqlite3_exec(db,sql,NULL,0,&errMsg);
-
-    // if(ret != SQLITE_OK){
-        // fprintf(stderr, "SQL error: %s\n",errMsg);
-        // sqlite3_free(errMsg);
-    //}
-
-    // Create Table example 
-    // Will check if the table already exists, and if not will create it 
-    /* char* sql = "CREATE TABLE IF NOT EXISTS HR_DATA("\
-    //                "ID INT PRIMARY KEY NOT NULL," \
-     //               "HR INT," \
-      //              "...," \
-                    "...,");*/
-    // last slide of lab to sqlite3_exec() this query, to actually create the table 
-
-    // Inserting data 
-    // char sql[200];
-    // sprintf(sql, "INSERT INTO DATA(A,B) VALUES(%d,%d)",a,b);
-    // sqlite3_exec() to actually insert the data 
-
-                    // slide 6 to continue 
 	return 0;
+}
+int dbConnect(){
+    int retConnect;
+    retConnect = sqlite3_open("test.db",&db);
+    if (retConnect != SQLITE_OK){
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+    return retConnect;
+}
+int dbClose(){
+    int retClose;
+    retClose = sqlite3_close(db);
+    if(retClose != SQLITE_OK){
+        printf("Database connection was not able to close.");
+        return -1;
+    }
+    return retClose;
+
 }
 
 int
@@ -404,6 +416,25 @@ void printHist(int hist[96][5]){
     3                 121 through 160
     4                 above 160         <- This sends response to Arduino to send BPM high warning
     */
+
+}
+
+
+void insertData(int BPM, float temperature, int timeblock, char* recTime){
+
+    int ret;
+    char *insertErrMsg;
+
+    char insertQuery[200];
+
+    sprintf(insertQuery,"INSERT INTO Datapoint(BPM,Temperature,timeblock,recTime) VALUES(%d,%f,%d,'%s');",BPM,temperature,timeblock,recTime);
+    ret = sqlite3_exec(db,insertQuery,NULL,0,&insertErrMsg);
+
+
+    if(ret != SQLITE_OK){
+        fprintf(stderr, "SQL error: %s\n",insertErrMsg);
+        sqlite3_free(insertErrMsg);
+    }
 
 }
 
@@ -777,7 +808,7 @@ parent_loop(int fd) {
 
                 int val = 0;
 
-                 int timeBlock = ((hourVal) * 20);
+                timeBlock = ((hourVal) * 20);
 
                 if((0<=minuteVal)&&(minuteVal<15)){
                     val = 0;
@@ -949,7 +980,11 @@ send_cmd(int fd, char *cmd, size_t len) {
     char *high;
     char hour;
     char minute;
-    char second;
+    char tmp;
+
+
+
+
 
 
 
@@ -959,7 +994,7 @@ send_cmd(int fd, char *cmd, size_t len) {
         high = "HIG\r";
         hour = buf[1];
         minute = buf[2];
-        second = buf[3];
+        tmp = buf[3];
         BPM = (int)BPMchar;
     }
     else {
@@ -970,7 +1005,6 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     hourVar = (int) hour;
     minuteVar = (int) minute;
-    secondVar = (int) second;
     // printf("Time: %d:%d:%d \n",hourVar,minuteVar,secondVar);
 
 
@@ -1051,7 +1085,98 @@ send_cmd(int fd, char *cmd, size_t len) {
     mapSync();
 
 
+    if(hourVar < 10){
+        recTime[1] = '0';
+        recTime[0] = (char) hourVar + '0';
+    }
+    else if(hourVar>=10){
+        char hourString[2];
+        tostring(hourString,hourVar);
+        recTime[1] = hourString[1];
+        recTime[0] = hourString[0];
+    }
+    else {
+        printf("Error with hourVar.\n");
+    }
+
+
+    recTime[2] = ':';
+    if(minuteVar < 10){
+        recTime[3] = '0';
+        recTime[4] = (char) minuteVar + '0';
+    }
+    else if(minuteVar>=10) {
+        char minuteString[2];
+        tostring(minuteString,minuteVar);
+        recTime[3] = minuteString[1];
+        recTime[4] = minuteString[0];
+    }
+    else {
+        printf("Error with minuteVar.\n");
+    }
+
+    int val1 = 0;
+
+    timeBlock = ((hourVar) * 20);
+
+    if((0<=minuteVar)&&(minuteVar<15)){
+        val1 = 0;
+        timeBlock = timeBlock + val1;
+    }
+    else if((15<=minuteVar)&&(minuteVar<30)){
+        val1 = 1;
+        timeBlock = timeBlock + (val*5);
+
+     }
+    else if((30<=minuteVar)&&(minuteVar<45)){
+         val1 = 2;
+         timeBlock = timeBlock + (val1*5);
+    }
+    else if((45<=minuteVar)&&(minuteVar<60)){
+         val1 = 3;
+         timeBlock = timeBlock + (val1*5);
+    }
+
+    temperature = (float) tmp;
+    temperature = temperature * 1.8;
+    temperature = temperature + 32;
+    temperature = temperature - '0';
+
+    
+
+    printf("DEBUG BEFORE INSERT\n");
+    printf("BPM: %d\n",BPM);
+    printf("Temperature: %f\n",temperature);
+    printf("Timeblock: %d\n",timeBlock);
+    printf("recTime: %s\n",recTime);
+
+    dbConnect();
+    insertData(BPM, temperature, timeBlock, recTime);
+    dbClose();
+
+
     return count;
+}
+
+
+
+
+void tostring(char str[], int num)
+{
+    int i, rem, len = 0, n;
+ 
+    n = num;
+    while (n != 0)
+    {
+        len++;
+        n /= 10;
+    }
+    for (i = 0; i < len; i++){
+        rem = num % 10;
+        num = num / 10;
+        str[len - (i + 1)] = rem + '0';
+    }
+    str[len] = '\0';
 }
 
 
@@ -1074,7 +1199,7 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     sleep(1);
     // response read in, number of bytes read set equal to count
     
-    count = read(fd, buf, sizeof(buf));
+    count = read(fd, buf, sizeof(buf)); 
     // Error if read fails or no response is received
     if (count == -1) {
         perror("serial-read");
@@ -1086,7 +1211,6 @@ send_cmd_env(int fd, char *cmd, size_t len) {
         return -1;
     }
     */
-    float temperature;
     float humidity;
     char tmp = buf[0];
     temperature = (float) tmp;
