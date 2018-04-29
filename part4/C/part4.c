@@ -516,7 +516,7 @@ parent_loop(int fd) {
         // Set of strings which are sent to the arduino
         // These strings are compared in the arduino code
         // and the corresponding function is performed.
-        //char *command1 = "shX\r";
+        char *command1 = "shX";
         char *command2 = "PAU\r";
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
@@ -542,6 +542,8 @@ parent_loop(int fd) {
             printf("pause\n"); // 2
             printf("resume\n"); 
             printf("rate\n");
+            printf("date\n");
+            printf("regressionX\n");
             printf("env\n");
             printf("hist\n");
             printf("histX\n");
@@ -579,24 +581,20 @@ parent_loop(int fd) {
              char pipeBuf[5];
             if(strcmp(buffer,showX)==0){
 
-
-                char *command1 = "shX";
-                char* newCommand = command1;
+                int xVal;
 
                 printf("Enter X: ");
-                // gets number of bytes in and puts them into the buffer
-                bytes_in = getline(&buffer,&buffer_size,stdin);
+                scanf("%d",&xVal);
                 printf("\n");
-                // prints number of characters read
-                printf("%zu characters were read.\n",bytes_in);
-                // prints command that was typed
-                printf("You typed: %s\n",buffer);
-                sprintf(buffer,"\r");
-                sprintf(newCommand, "%s", buffer);
+                printf("You typed: %d\n",xVal);
+                    
+                char* xString = (char*) malloc(sizeof(int));
+                tostring(xString,xVal);
 
+                char newCommand[80];
+                snprintf(newCommand,sizeof(newCommand),"%s%s",command1,xString);
 
-        
-                printf("newCommand: %s\n",newCommand);
+                // printf("newCommand: %s\n",newCommand);
 
 
                 size_t c1 = strlen(newCommand);
@@ -879,6 +877,7 @@ parent_loop(int fd) {
                 printf("\n");
                 
             }
+
             // reset: Clear all data from the backing file 
             else if(strcmp(buffer,reset)==0){
                 size_t mapSize = 480;
@@ -921,6 +920,56 @@ parent_loop(int fd) {
             // default to the current time block. 
             // LINEAR REGRESSION FUNCTION !!!!!!
             else if(strcmp(buffer,regressionX)==0){
+                int retTb;
+                int x = 0, i, j;
+                printf("X is a time block number between 0 and 96\n");
+                printf("Enter X:");
+                // gets number of bytes in and puts them into the buffer
+                scanf("%d",&x);
+                printf("\n");
+                printf("x value: %d \n",x);
+
+                // Values to query in database 
+                int val1 = (x * 5); 
+                int val2 = (x * 5) + 1;
+                int val3 = (x * 5) + 2;
+                int val4 = (x * 5) + 3;
+                int val5 = (x * 5) + 4;
+
+                char sql[200];
+                sprintf(sql, "SELECT BPM, Temperature FROM Datapoint WHERE timeblock = %d OR %d OR %d OR %d OR %d;",val1,val2,val3,val4,val5);
+
+
+
+
+                sqlite3_stmt *stmt;
+                sqlite3_prepare_v2(db,sql,strlen(sql),&stmt,NULL);
+
+                printf("%s\n",sql);
+
+
+                int NUM_COLS = 2;
+                int NUM_ROWS = 1;
+                i = 0;
+                int **data_selected = calloc(200,sizeof(int)*NUM_COLS); // place holder for two integers 
+
+                while( (retTb = sqlite3_step(stmt) == SQLITE_ROW) ){
+                    data_selected = realloc(data_selected, (NUM_ROWS*NUM_COLS)* sizeof(int));
+                    data_selected[i] = (int*) malloc(NUM_COLS * sizeof(int));
+                    for(j = 0; j < NUM_COLS; j++){
+                        data_selected[i][j] = sqlite3_column_int(stmt, j);
+                        if((j%2)==0){
+                            printf("BPM: %d\n",data_selected[i][j]);
+                        }
+                        else if((j%2)==1){
+                            printf("Temperature: %d\n",data_selected[i][j]);
+                        }
+                    }
+                    i++;
+                    NUM_ROWS++;
+                }
+
+
 
 
             }
@@ -1140,15 +1189,9 @@ send_cmd(int fd, char *cmd, size_t len) {
     temperature = (float) tmp;
     temperature = temperature * 1.8;
     temperature = temperature + 32;
-    temperature = temperature - '0';
 
     
-
-    printf("DEBUG BEFORE INSERT\n");
-    printf("BPM: %d\n",BPM);
-    printf("Temperature: %f\n",temperature);
-    printf("Timeblock: %d\n",timeBlock);
-    printf("recTime: %s\n",recTime);
+    
 
     dbConnect();
     insertData(BPM, temperature, timeBlock, recTime);
@@ -1188,6 +1231,7 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     char buf[64]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
+    tcflush(fd, TCIOFLUSH);
     if (write(fd, cmd, len) == -1) {
         printf("Serial write error.\n");
         // perror("serial-write");
@@ -1196,7 +1240,7 @@ send_cmd_env(int fd, char *cmd, size_t len) {
 
     // Give the data time to transmit
     // Serial is slow...
-    sleep(1);
+    sleep(2);
     // response read in, number of bytes read set equal to count
     
     count = read(fd, buf, sizeof(buf)); 
@@ -1216,7 +1260,6 @@ send_cmd_env(int fd, char *cmd, size_t len) {
     temperature = (float) tmp;
     temperature = temperature * 1.8;
     temperature = temperature + 32;
-    temperature = temperature - '0';
     humidity = (float) buf[1];
     if(humidity < 0){
         humidity = humidity * -1;
@@ -1267,22 +1310,8 @@ send_cmd_date(int fd, char *cmd, size_t len) {
 
     int x = 4;
 
-    /*for(int i=0; i<64; i++){
-        if(buf[i]=='\n'){
-            x = i;
-            break;
-        }
-    }*/
 
     
-    printf("%d\n",(int) buf[0]); // A
-    printf("%d\n",(int) buf[1]); // Day
-    printf("%d\n",(int) buf[2]); // Month
-    printf("%d\n",(int) buf[3]); // Year 
-    
-    
-
-
 
 
     if(buf[x] == '\n'){

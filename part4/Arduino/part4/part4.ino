@@ -177,9 +177,6 @@ void loop(){
   
   if(Serial.available()){ // checks if serial port is available 
     command = Serial.readString(); // reads in command from terminal to a string 
-    // lcd.clear();
-    // lcd.setCursor(0,0);
-    // lcd.write("got command");
 
     
     // String comparison is used to perform the corresponding functions 
@@ -261,13 +258,20 @@ void loop(){
     // env: Query the value of the environment sensor from the Arduino and print 
     // it to the console 
     else if(command.equals(env_var)){
-
+        
         char temperature = sensor.readTemperature();
         char humidity = sensor.readHumidity();
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.write("Temperature: ");
+        lcd.setCursor(0,1);
+        lcd.print(temperature);
+        // delay(10000);
         Serial.write(temperature);
         Serial.write(humidity);
         Serial.write("\n");
     }
+    /*
     else if(command.equals(low)){
       lcd.clear();
       lcd.setCursor(0,0);
@@ -290,6 +294,7 @@ void loop(){
      // Serial.flush();
       //delay(100);
     }
+    */
     else if(command.equals(hist)){
       readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
       Serial.write(BPM);

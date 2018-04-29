@@ -7,7 +7,7 @@ CC = gcc
 # -pedantic
 # -Werror 
 # -Wextra
-CFLAGS = -g -Wall -pedantic -Werror -lsqlite3
+CFLAGS = -std=c99 -g -Wall -pedantic -Werror -lsqlite3
 
 # name of executable file 
 EXEC = part4
