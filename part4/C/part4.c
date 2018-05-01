@@ -952,21 +952,44 @@ parent_loop(int fd) {
                 i = 0;
                 int **data_selected = calloc(200,sizeof(int)*NUM_COLS); // place holder for two integers 
 
+
+		int numElements = 0;
+		float x1 = 0, x2 = 0, y1 = 0, y2 = 0, xy = 0; //Variables hold (in order) sigma x, sigma x^2, sigma y, sigma y^2, sigma xy
+
+		// x is the temperature, y is the BPM.
+
                 while( (retTb = sqlite3_step(stmt) == SQLITE_ROW) ){
                     data_selected = realloc(data_selected, (NUM_ROWS*NUM_COLS)* sizeof(int));
                     data_selected[i] = (int*) malloc(NUM_COLS * sizeof(int));
+		    float xytemp = 1;
                     for(j = 0; j < NUM_COLS; j++){
                         data_selected[i][j] = sqlite3_column_int(stmt, j);
                         if((j%2)==0){
                             printf("BPM: %d\n",data_selected[i][j]);
+			    y1 += data_selected[i][j];
+			    y2 += (data_selected[i][j] * data_selected[i][j]);
+			    xytemp *= data_selected[i][j];
                         }
                         else if((j%2)==1){
                             printf("Temperature: %d\n",data_selected[i][j]);
+			    x1 += data_selected[i][j];
+			    x2 += (data_selected[i][j] * data_selected[i][j]);
+			    xytemp *= data_selected[i][j];
                         }
                     }
+		    xy += xytemp;
                     i++;
                     NUM_ROWS++;
+		    numElements++;
                 }
+
+		float a;
+		float b;
+	
+		a = ((y1*x2) - (x1*xy)) / ((numElements*x2) - (x1*x1));
+		b = ((numElements*xy) - (x1*y1))/((numElements*x2)-(x1*x1));
+
+		printf("Linear Regression Function: y = %fx + %f\n", b, a);
 
 
 
@@ -1125,7 +1148,6 @@ static int callback(void *data, int argc, char **argv, char **azColName){
 int
 send_cmd(int fd, char *cmd, size_t len) {
     int count; // number of bytes received as a response from the arduino
-    char BPMchar;
     char buf[64]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
@@ -1171,19 +1193,18 @@ send_cmd(int fd, char *cmd, size_t len) {
 
 
 
-    if(buf[4] == '\n'){
-        BPMchar = buf[0];
+    if(buf[6] == '\n'){
         low = "LOW\r";
         high = "HIG\r";
         hour = buf[1];
         minute = buf[2];
         tmp = buf[3];
-        BPM = (int)BPMchar;
+        BPM = buf[0]*100 + buf[1]*10 + buf[2];
     }
     else {
         return -1;
     }
-	//printf("%d\n", BPM);
+	printf("%d\n", BPM);
 
 
     hourVar = (int) hour;

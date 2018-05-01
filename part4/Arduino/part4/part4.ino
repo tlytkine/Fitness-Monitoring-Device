@@ -246,7 +246,15 @@ void loop(){
       //lcd.setCursor(0,1);
       //lcd.print(BPM);
       char temperature = sensor.readTemperature();
-      Serial.write(BPM);
+      int BPMT = BPM; //BPM gets broken into individual digits, so it can send any 3-digit number without any chance of running out of bits.
+      int BPM2 = BPMT % 10;
+      BPMT = BPMT % 10;
+      int BPM1 = BPMT % 10;
+      BPMT = BPMT % 10;
+      int BPM0 = BPMT % 10;
+      Serial.write(BPM0);
+      Serial.write(BPM1);
+      Serial.write(BPM2);
       Serial.write(hourGet);
       Serial.write(minuteGet);
       Serial.write(temperature);
