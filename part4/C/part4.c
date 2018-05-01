@@ -38,10 +38,12 @@ int send_cmd(int fd, char *cmd, size_t len); // method to send / receive command
 int send_cmd_env(int fd, char *cmd, size_t len);  // second method to send / receive commands for environment sensor 
 int send_cmd_date(int fd, char *cmd, size_t len);  // second method to send / receive commands for RTC 
 int readline(int serial_fd, char *buf);  
+static int callbacksd(void *data, int argc, char **argv, char **azColName);
 void tostring(char [], int);
 int dbConnect();
 int dbClose();
 static int callback(void *data, int argc, char **argv, char **azColName);
+void setHourMinute(int hour, int minute);
 int pid; //Forks the program.
 
 // Global variables to store information from sensors 
@@ -54,6 +56,8 @@ const char *filepath = "/tmp/mmapped.txt"; // mmap file path
 int mapfd; // map file descriptor 
 char *map; 
 int BPM; // BPM value 
+char hour;
+char minute;
 
 int pipeFd[2];
 int pipeFd2[2];
@@ -87,6 +91,13 @@ void mapWrite(){
         close(mapfd);
         printf("Error mmapping the file\n");                      
     }
+}
+int hourVar; // hour 
+int minuteVar; // minute 
+
+void setHourMinute(int hour, int minute){
+    hourVar = hour;
+    minuteVar = minute;
 }
 
 // Syncs map values to filepath 
@@ -292,134 +303,8 @@ done:
     return ret;
 }
 
-void printHist(int hist[96][5]){
-
-    // BPM 
-    int freq0 = 0; // 0 through 40
-    int freq1 = 0; // 41 through 80
-    int freq2 = 0; // 81 through 120
-    int freq3 = 0; // 121 through 160
-    int freq4 = 0; // above 160
-
-    int hourStart = 0;
-    int hourEnd = 0;
-    char* minuteStart = "xx";
-    char* minuteEnd = "xx";
-
-    hourStart = hourVar;
-    hourEnd = hourVar;
-
-    int index = 0;
-
-    if((0<=minuteVar)&&(minuteVar<15)){
-        index = hourVar * 4;
-        minuteStart = "00";
-        minuteEnd = "15";
-
-    }
-    else if((15<=minuteVar)&&(minuteVar<30)){
-        index = (hourVar*4)+1;
-        minuteStart = "15";
-        minuteEnd = "30";
-
-    }
-    else if((30<=minuteVar)&&(minuteVar<45)){
-        index = (hourVar*4)+2;
-        minuteStart = "30";
-        minuteEnd = "45";
-
-    }
-    else if((45<=minuteVar)&&(minuteVar<60)){
-        index = (hourVar*4)+3;
-        minuteStart = "45";
-        minuteEnd = "00";
-        hourEnd = hourStart + 1;
-    }
-
-    freq0 = hist[index][0];
-    freq1 = hist[index][1];
-    freq2 = hist[index][2];
-    freq3 = hist[index][3];
-    freq4 = hist[index][4];
 
 
-        printf("Histogram for Current Time Interval: ");
-        printf("%d:%s-%d:%s\n",hourStart,minuteStart,hourEnd,minuteEnd);
-        printf("BPM    0 through 40: ");
-        while(freq0!=0){
-            printf("X");
-            freq0--;
-        }
-        printf("\n");
-        printf("BPM   41 through 80: ");
-        while(freq1!=0){
-            printf("X");
-            freq1--;
-        }
-        printf("\n");
-        printf("BPM  81 through 120: ");
-        while(freq2!=0){
-            printf("X");
-            freq2--;
-        } 
-        printf("\n");       
-        printf("BPM 121 through 160: ");
-        while(freq3!=0){
-            printf("X");
-            freq3--;
-        }
-        printf("\n");
-        printf("BPM       above 160: ");
-        while(freq4!=0){
-            printf("X");
-            freq4--;
-        }
-        printf("\n");
-
-
-    /*
-
-    // First index, intervals 
-    // 0 - 3 12:00am - 1:00am
-    // Example:
-    // 0 is 12:00am - 12:15am
-    // 1 is 12:15am - 12:30am
-    // 2 is 12:30am - 12:45am
-    // 3 is 12:45am - 1:00am
-    // The rest follow the same pattern 
-    // 4 - 7 1:00am - 2:00am
-    // 8 - 11 2:00am - 3:00am
-    // 12 - 15 3:00am - 4:00am
-    // 16 - 19 4:00am - 5:00am
-    // 20 - 23 5:00am - 6:00am
-    // 24 - 27 6:00am - 7:00am
-    // 28 - 31 7:00am - 8:00am
-    // 32 - 35 8:00am - 9:00am
-    // 36 - 39 9:00am - 10:00am
-    // 40 - 43 10:00am - 11:00am
-    // 44 - 47 11:00am - 12:00pm
-    // 48 - 51  12:00am - 1:00am
-    // 52 - 55 1:00am - 2:00am
-    // 56 - 59 2:00am - 3:00am
-    // 60 - 63 3:00am - 4:00am
-    // 64 - 67 4:00am - 5:00am
-    // 68 - 71 5:00am - 6:00am
-    // 72 - 75 6:00am - 7:00am
-    // 76 - 79 7:00am - 8:00am
-    // 80 - 83 8:00am - 9:00am
-    // 84 - 87 9:00am - 10:00am
-    // 88 - 91 10:00am - 11:00am
-    // 92 - 95 11:00am - 12:00pm
-    
-    Second Index      BPM Value          Outlier Warning?
-    0                 0 through 40      <- This sends response to Arduino to send BPM low warning
-    1                 41 through 80
-    2                 81 through 120
-    3                 121 through 160
-    4                 above 160         <- This sends response to Arduino to send BPM high warning
-    */
-
-}
 
 
 void insertData(int BPM, float temperature, int timeblock, char* recTime){
@@ -713,7 +598,11 @@ parent_loop(int fd) {
 
                 int val = 0;
 
-                 int timeBlock = ((hourVar) * 20);
+
+
+
+                timeBlock = ((hourVar) * 20);
+
 
                 if((0<=minuteVar)&&(minuteVar<15)){
                     val = 0;
@@ -734,7 +623,7 @@ parent_loop(int fd) {
                     val = 3;
                     timeBlock = timeBlock + (val*5);
                 }
-                printf("timeBlock: %d \n",timeBlock);
+               
                 
 
                 int freq0 = (int) map[timeBlock];
@@ -944,7 +833,7 @@ parent_loop(int fd) {
                 sqlite3_stmt *stmt;
                 sqlite3_prepare_v2(db,sql,strlen(sql),&stmt,NULL);
 
-                printf("%s\n",sql);
+              
 
 
                 int NUM_COLS = 2;
@@ -961,17 +850,17 @@ parent_loop(int fd) {
                 while( (retTb = sqlite3_step(stmt) == SQLITE_ROW) ){
                     data_selected = realloc(data_selected, (NUM_ROWS*NUM_COLS)* sizeof(int));
                     data_selected[i] = (int*) malloc(NUM_COLS * sizeof(int));
-		    float xytemp = 1;
+		            float xytemp = 1;
                     for(j = 0; j < NUM_COLS; j++){
                         data_selected[i][j] = sqlite3_column_int(stmt, j);
                         if((j%2)==0){
-                            printf("BPM: %d\n",data_selected[i][j]);
+                          //  printf("BPM: %d\n",data_selected[i][j]);
 			    y1 += data_selected[i][j];
 			    y2 += (data_selected[i][j] * data_selected[i][j]);
 			    xytemp *= data_selected[i][j];
                         }
                         else if((j%2)==1){
-                            printf("Temperature: %d\n",data_selected[i][j]);
+                            // printf("Temperature: %d\n",data_selected[i][j]);
 			    x1 += data_selected[i][j];
 			    x2 += (data_selected[i][j] * data_selected[i][j]);
 			    xytemp *= data_selected[i][j];
@@ -1065,7 +954,7 @@ parent_loop(int fd) {
 
                 // Mode of BPM
                 char modeBPM[400];
-                sprintf(modeBPM, "SELECT BPM, MAX((SELECT COUNT(BPM) FROM Datapoint AS Datapoint1 WHERE BPM = Datapoint2.BPM AND timeblock = %d GROUP BY BPM ORDER BY COUNT(*) DESC LIMIT 1)) AS Mode_Of_BPM FROM (SELECT DISTINCT BPM FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",val1,val1);
+                sprintf(modeBPM, "SELECT BPM AS Mode_Of_BPM, MAX((SELECT COUNT(BPM) FROM Datapoint AS Datapoint1 WHERE BPM = Datapoint2.BPM AND timeblock = %d GROUP BY BPM ORDER BY COUNT(*) DESC LIMIT 1)) AS Frequency FROM (SELECT DISTINCT BPM FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",val1,val1);
                 retTb = sqlite3_exec(db, modeBPM, callback, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -1075,7 +964,7 @@ parent_loop(int fd) {
 
                 // Mode of Temperature 
                 char modeTemp[400];
-                sprintf(modeTemp, "SELECT Temperature, MAX((SELECT COUNT(Temperature) FROM Datapoint AS Datapoint1 WHERE Temperature = Datapoint2.Temperature AND timeblock = %d GROUP BY Temperature ORDER BY COUNT(*) DESC LIMIT 1)) AS Mode_Of_Temperature FROM (SELECT DISTINCT Temperature FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",val1,val1);
+                sprintf(modeTemp, "SELECT Temperature AS Mode_Of_Temperature, MAX((SELECT COUNT(Temperature) FROM Datapoint AS Datapoint1 WHERE Temperature = Datapoint2.Temperature AND timeblock = %d GROUP BY Temperature ORDER BY COUNT(*) DESC LIMIT 1)) AS Frequency FROM (SELECT DISTINCT Temperature FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",val1,val1);
                 retTb = sqlite3_exec(db, modeTemp, callback, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -1086,7 +975,7 @@ parent_loop(int fd) {
                 // Standard Deviation^2 of BPM
                 char sdBPM[400];
                 sprintf(sdBPM, "SELECT AVG(((Datapoint.BPM - Average)*(Datapoint.BPM - Average))) AS VarianceBPM FROM Datapoint, (SELECT AVG(BPM) AS Average FROM Datapoint AS AverageValues WHERE timeblock = %d) WHERE timeblock = %d;",val1,val1);
-                retTb = sqlite3_exec(db, sdBPM, callback, (void*)data, &errMsg);
+                retTb = sqlite3_exec(db, sdBPM, callbacksd, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
                     sqlite3_free(errMsg);
@@ -1096,7 +985,7 @@ parent_loop(int fd) {
                 // Standard Deviation^2 of Temperature
                 char sdTemp[400];
                 sprintf(sdTemp, "SELECT AVG(((Datapoint.Temperature - Average)*(Datapoint.Temperature - Average))) AS VarianceTemperature FROM Datapoint, (SELECT AVG(Temperature) AS Average FROM Datapoint AS AverageValues WHERE timeblock = %d) WHERE timeblock = %d;",val1,val1);
-                retTb = sqlite3_exec(db, sdTemp, callback, (void*)data, &errMsg);
+                retTb = sqlite3_exec(db, sdTemp, callbacksd, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
                     sqlite3_free(errMsg);
@@ -1114,6 +1003,21 @@ parent_loop(int fd) {
 }
 
 static int callback(void *data, int argc, char **argv, char **azColName){
+   int i;
+   fprintf(stderr, "%s", (const char*)data);
+
+
+   for(i = 0; i<argc; i++){
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+      }
+   
+   
+   
+   printf("\n");
+   return 0;
+}
+
+static int callbacksd(void *data, int argc, char **argv, char **azColName){
    int i;
    fprintf(stderr, "%s", (const char*)data);
 
@@ -1183,37 +1087,45 @@ send_cmd(int fd, char *cmd, size_t len) {
     //  printf("Response: %s\n", buf);
     char *low;
     char *high;
-    char hour;
-    char minute;
     char tmp;
 
 
 
 
-
+    //printf("%s\n", buf);
 
 
     if(buf[6] == '\n'){
+    // printf("%c\n", buf[0]+'0');
+       // printf("%c\n", buf[1]+'0');
+        //printf("%c\n", buf[2]+'0');
+      //  printf("%d\n",(int) buf[3]);
+       // printf("%d\n",(int) buf[4]);
+       // printf("%c\n", buf[5]+'0');
         low = "LOW\r";
         high = "HIG\r";
-        hour = buf[1];
-        minute = buf[2];
-        tmp = buf[3];
+        hour = buf[3];
+        minute = buf[4];
+        tmp = buf[5];
         BPM = buf[0]*100 + buf[1]*10 + buf[2];
     }
     else {
         return -1;
     }
-	printf("%d\n", BPM);
+	// printf("%d\n", BPM);
 
 
     hourVar = (int) hour;
     minuteVar = (int) minute;
+
+    printf("hourVar %d\n",hourVar);
+    printf("minuteVar %d\n",minuteVar);
+
     // printf("Time: %d:%d:%d \n",hourVar,minuteVar,secondVar);
 
 
 
-    //printHist(hist);
+
 
     // 1st index is hour
     // if minutes are between 0 and 15 first index is equal to hour 
@@ -1295,7 +1207,8 @@ send_cmd(int fd, char *cmd, size_t len) {
     }
     else if(hourVar>=10){
         char hourString[2];
-        tostring(hourString,hourVar);
+        int hv = hourVar;
+        tostring(hourString,hv);
         recTime[1] = hourString[1];
         recTime[0] = hourString[0];
     }
@@ -1311,7 +1224,8 @@ send_cmd(int fd, char *cmd, size_t len) {
     }
     else if(minuteVar>=10) {
         char minuteString[2];
-        tostring(minuteString,minuteVar);
+        int mv = minuteVar;
+        tostring(minuteString,mv);
         recTime[3] = minuteString[1];
         recTime[4] = minuteString[0];
     }
@@ -1345,7 +1259,8 @@ send_cmd(int fd, char *cmd, size_t len) {
     temperature = temperature * 1.8;
     temperature = temperature + 32;
 
-    
+
+
     
 
     dbConnect();
@@ -1470,7 +1385,6 @@ send_cmd_date(int fd, char *cmd, size_t len) {
 
 
     if(buf[x] == '\n'){
-        printf("%c\n",buf[0]);
         day = buf[1];
         month = buf[2];
         year = buf[3];
