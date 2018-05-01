@@ -934,13 +934,9 @@ parent_loop(int fd) {
 
                 // Values to query in database 
                 int val1 = x*5; 
-                int val2 = (x*5) + 1;
-                int val3 = (x*5) + 2;
-                int val4 = (x*5) + 3;
-                int val5 = (x*5) + 4;
 
                 char sql[200];
-                sprintf(sql, "SELECT BPM, Temperature FROM Datapoint WHERE timeblock = %d OR %d OR %d OR %d OR %d;",val1,val2,val3,val4,val5);
+                sprintf(sql, "SELECT BPM, Temperature FROM Datapoint WHERE timeblock = %d",val1);
 
 
 
