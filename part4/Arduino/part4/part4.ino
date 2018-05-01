@@ -103,7 +103,7 @@ void setup(){
 
   const char *system_date = __DATE__;
   const char *system_time = __TIME__;
-      
+ 
 
 
   // might need to be byte *
@@ -111,8 +111,15 @@ void setup(){
   byte minuteSet = ((int)system_time[3]-48)*10 + (int)system_time[4]-48;
   byte hourSet = ((int)system_time[0]-48)*10 + (int)system_time[1]-48;
   byte dayOfWeekSet = 3; // 1 Sunday, 7 Saturday 
-  byte dayOfMonthSet = ((((int)system_date[4]-48)*10) + ((int)system_date[5]-48));
-  byte monthSet = 04; // 
+  byte dayOfMonthSet;
+  if((int)system_date[4]==32){
+    dayOfMonthSet = (int) system_date[5] - 48;
+  }
+  else {
+    dayOfMonthSet = ((int)system_date[4]-48)*10 + (int)system_date[5]-48;
+  }
+
+  byte monthSet = 05; // 
   byte yearSet =  ((((int)system_date[9])-48)*10) +  (int)system_date[10]-48;  
   /*lcd.print(system_time);
   lcd.print(" ");
@@ -248,10 +255,14 @@ void loop(){
       char temperature = sensor.readTemperature();
       int BPMT = BPM; //BPM gets broken into individual digits, so it can send any 3-digit number without any chance of running out of bits.
       int BPM2 = BPMT % 10;
-      BPMT = BPMT % 10;
+      BPMT = BPMT / 10;
       int BPM1 = BPMT % 10;
-      BPMT = BPMT % 10;
+      BPMT = BPMT / 10;
       int BPM0 = BPMT % 10;
+      //lcd.print(BPM0);
+      //lcd.print(BPM1);
+      //lcd.print(BPM2);
+      //delay(250);
       Serial.write(BPM0);
       Serial.write(BPM1);
       Serial.write(BPM2);
