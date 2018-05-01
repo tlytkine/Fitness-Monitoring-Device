@@ -13,6 +13,7 @@
 #include <string.h> 
 #include <signal.h>
 #include <sqlite3.h>
+#include <math.h>
 
 
 // Specifies what to return / print upon an error
@@ -40,6 +41,7 @@ int readline(int serial_fd, char *buf);
 void tostring(char [], int);
 int dbConnect();
 int dbClose();
+static int callback(void *data, int argc, char **argv, char **azColName);
 int pid; //Forks the program.
 
 // Global variables to store information from sensors 
@@ -544,6 +546,7 @@ parent_loop(int fd) {
             printf("rate\n");
             printf("date\n");
             printf("regressionX\n");
+            printf("statX\n");
             printf("env\n");
             printf("hist\n");
             printf("histX\n");
@@ -930,11 +933,11 @@ parent_loop(int fd) {
                 printf("x value: %d \n",x);
 
                 // Values to query in database 
-                int val1 = (x * 5); 
-                int val2 = (x * 5) + 1;
-                int val3 = (x * 5) + 2;
-                int val4 = (x * 5) + 3;
-                int val5 = (x * 5) + 4;
+                int val1 = x*5; 
+                int val2 = (x*5) + 1;
+                int val3 = (x*5) + 2;
+                int val4 = (x*5) + 3;
+                int val5 = (x*5) + 4;
 
                 char sql[200];
                 sprintf(sql, "SELECT BPM, Temperature FROM Datapoint WHERE timeblock = %d OR %d OR %d OR %d OR %d;",val1,val2,val3,val4,val5);
@@ -980,11 +983,146 @@ parent_loop(int fd) {
             // to the current time block. 
             else if(strcmp(buffer,statX)==0){
 
+                int retTb;
+                int x = 0;
+                printf("X is a time block number between 0 and 96\n");
+                printf("Enter X: ");
+                // gets number of bytes in and puts them into the buffer
+                scanf("%d",&x);
+                printf("\n");
+
+
+                // Values to query in database 
+                int val1 = x*5; 
+
+
+                char *errMsg = 0;
+
+                
+    
+                const char* data = "\n";
+
+                // Reading Count BPM
+                char rcBPM[200];
+                sprintf(rcBPM, "SELECT COUNT(*) AS Reading_Count_Of_BPM FROM Datapoint WHERE timeblock = %d;",val1);
+                retTb = sqlite3_exec(db, rcBPM, callback, (void*)data, &errMsg);
+                if( retTb != SQLITE_OK ) {
+                    fprintf(stderr, "SQL error: %s\n", errMsg);
+                    sqlite3_free(errMsg);
+                }
+
+   
+
+
+                // Reading Count Temperature 
+                char rcTemp[200];
+                sprintf(rcTemp, "SELECT COUNT(*) AS Reading_Count_Of_Temperature FROM Datapoint WHERE timeblock = %d;",val1);
+                retTb = sqlite3_exec(db, rcTemp, callback, (void*)data, &errMsg);
+                if( retTb != SQLITE_OK ) {
+                    fprintf(stderr, "SQL error: %s\n", errMsg);
+                    sqlite3_free(errMsg);
+                }
+
+
+                // Mean BPM
+                char meanBPM[200];
+                sprintf(meanBPM, "SELECT AVG(BPM) AS Average_BPM FROM Datapoint WHERE timeblock = %d;",val1);
+                retTb = sqlite3_exec(db, meanBPM, callback, (void*)data, &errMsg);
+                if( retTb != SQLITE_OK ) {
+                    fprintf(stderr, "SQL error: %s\n", errMsg);
+                    sqlite3_free(errMsg);
+                }
+
+
+                // Mean Temperature 
+                char meanTemp[200];
+                sprintf(meanTemp, "SELECT AVG(Temperature) AS Average_Temperature FROM Datapoint WHERE timeblock = %d;",val1);
+                retTb = sqlite3_exec(db, meanTemp, callback, (void*)data, &errMsg);
+                if( retTb != SQLITE_OK ) {
+                    fprintf(stderr, "SQL error: %s\n", errMsg);
+                    sqlite3_free(errMsg);
+                }
+
+
+                // Mode of BPM
+                char modeBPM[400];
+                sprintf(modeBPM, "SELECT BPM, MAX((SELECT COUNT(BPM) FROM Datapoint AS Datapoint1 WHERE BPM = Datapoint2.BPM AND timeblock = %d GROUP BY BPM ORDER BY COUNT(*) DESC LIMIT 1)) AS Mode_Of_BPM FROM (SELECT DISTINCT BPM FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",val1,val1);
+                retTb = sqlite3_exec(db, modeBPM, callback, (void*)data, &errMsg);
+                if( retTb != SQLITE_OK ) {
+                    fprintf(stderr, "SQL error: %s\n", errMsg);
+                    sqlite3_free(errMsg);
+                }
+
+
+                // Mode of Temperature 
+                char modeTemp[400];
+                sprintf(modeTemp, "SELECT Temperature, MAX((SELECT COUNT(Temperature) FROM Datapoint AS Datapoint1 WHERE Temperature = Datapoint2.Temperature AND timeblock = %d GROUP BY Temperature ORDER BY COUNT(*) DESC LIMIT 1)) AS Mode_Of_Temperature FROM (SELECT DISTINCT Temperature FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",val1,val1);
+                retTb = sqlite3_exec(db, modeTemp, callback, (void*)data, &errMsg);
+                if( retTb != SQLITE_OK ) {
+                    fprintf(stderr, "SQL error: %s\n", errMsg);
+                    sqlite3_free(errMsg);
+                }
+
+
+                // Standard Deviation^2 of BPM
+                char sdBPM[400];
+                sprintf(sdBPM, "SELECT AVG(((Datapoint.BPM - Average)*(Datapoint.BPM - Average))) AS VarianceBPM FROM Datapoint, (SELECT AVG(BPM) AS Average FROM Datapoint AS AverageValues WHERE timeblock = %d) WHERE timeblock = %d;",val1,val1);
+                retTb = sqlite3_exec(db, sdBPM, callback, (void*)data, &errMsg);
+                if( retTb != SQLITE_OK ) {
+                    fprintf(stderr, "SQL error: %s\n", errMsg);
+                    sqlite3_free(errMsg);
+                }
+
+
+                // Standard Deviation^2 of Temperature
+                char sdTemp[400];
+                sprintf(sdTemp, "SELECT AVG(((Datapoint.Temperature - Average)*(Datapoint.Temperature - Average))) AS VarianceTemperature FROM Datapoint, (SELECT AVG(Temperature) AS Average FROM Datapoint AS AverageValues WHERE timeblock = %d) WHERE timeblock = %d;",val1,val1);
+                retTb = sqlite3_exec(db, sdTemp, callback, (void*)data, &errMsg);
+                if( retTb != SQLITE_OK ) {
+                    fprintf(stderr, "SQL error: %s\n", errMsg);
+                    sqlite3_free(errMsg);
+                }
+
+                
+
+
+
 
             }
 
     }
         return ret;
+}
+
+static int callback(void *data, int argc, char **argv, char **azColName){
+   int i;
+   fprintf(stderr, "%s", (const char*)data);
+
+   char* vBPM = "VarianceBPM";
+   char* p1;
+   char* p2;
+   char* vTemp = "VarianceTemperature";
+   char* nullVar = "NULL";
+
+   for(i = 0; i<argc; i++){
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+          if(strcmp(azColName[i],vBPM) && strcmp(argv[i],nullVar)){
+            float VarianceBPM = strtof(argv[i],&p1);
+            float sdBPM = sqrtf(VarianceBPM);
+            printf("Standard Deviation of BPM: %f\n",sdBPM);
+
+          }
+          if(strcmp(azColName[i],vTemp) && strcmp(argv[i],nullVar)){
+            float VarianceTemperature = strtof(argv[i],&p2);
+            float sdTemp = sqrtf(VarianceTemperature);
+            printf("Standard Deviation of Temperature: %f\n",sdTemp);
+          }
+      }
+   
+   
+   
+   printf("\n");
+   return 0;
 }
 
 // Function that sends command for heart rate sensor 
