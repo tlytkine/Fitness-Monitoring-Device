@@ -43,7 +43,7 @@ void tostring(char [], int);
 int dbConnect();
 int dbClose();
 static int callback(void *data, int argc, char **argv, char **azColName);
-void setHourMinute(int hour, int minute);
+int send_cmd_hour_minute(int fd, char *cmd, size_t len); 
 int pid; //Forks the program.
 
 // Global variables to store information from sensors 
@@ -400,6 +400,7 @@ parent_loop(int fd) {
         char *regressionX = "regressionX\n"; 
         char *statX = "statX\n"; 
 
+
         // Set of strings which are sent to the arduino
         // These strings are compared in the arduino code
         // and the corresponding function is performed.
@@ -408,9 +409,9 @@ parent_loop(int fd) {
         char *command3 = "RES\r";
         char *command4 = "WRT\r";
         char *command5 = "ENV\r";
-        char *command6 = "HST\r";
+     //   char *command6 = "HST\r";
         char *command7 = "DTE\r"; // date command to send to arduino
-        
+        char* command8 = "HRM\r"; // hour minute command
 
 
         // Warning commands
@@ -583,41 +584,42 @@ parent_loop(int fd) {
             // hist: Print a representation of the current time block's heart rate 
             // histogram to the console.
             else if(strcmp(buffer,hist1)==0){
-                size_t c6 = strlen(command6);
+                size_t c8 = strlen(command8);
                 write(pipeFd[1], "x", 1);
                 read(pipeFd2[0], pipeBuf, 1);
                 while(pipeBuf[0]!='s'){}
-                n = send_cmd(fd,command6,c6);
-                write(pipeFd[1], "r", 1);
+                n = send_cmd_hour_minute(fd, command8, c8); 
+                write(pipeFd[1], "r",1);
                 if(n>0){
                     ret = 0;
                 }
-                else{
+                else {
                     ret = 1;
                 }
 
                 int val = 0;
 
-
-
+                if(minuteVar < 10){
+                    printf("Time: %d:0%d\n",hourVar,minuteVar);
+                }
+                else {
+                    printf("Time: %d:%d\n",hourVar,minuteVar);
+                    
+                }
 
                 timeBlock = ((hourVar) * 20);
-
 
                 if((0<=minuteVar)&&(minuteVar<15)){
                     val = 0;
                     timeBlock = timeBlock + val;
-
                 }
                 else if((15<=minuteVar)&&(minuteVar<30)){
                     val = 1;
                     timeBlock = timeBlock + (val*5);
-
                 }
                 else if((30<=minuteVar)&&(minuteVar<45)){
                     val = 2;
                     timeBlock = timeBlock + (val*5);
-
                 }
                 else if((45<=minuteVar)&&(minuteVar<60)){
                     val = 3;
@@ -633,7 +635,22 @@ parent_loop(int fd) {
                 int freq4 = (int) map[timeBlock+4];
 
 
-                
+                if(freq0<0){
+                    freq0 = 0;
+                }
+                if(freq1<0){
+                    freq1 = 0;
+                }
+                if(freq2<0){
+                    freq2 = 0;
+                }
+                if(freq3<0){
+                    freq3 = 0;
+                }
+                if(freq4<0){
+                    freq4 = 0;
+                }
+    
                 printf("Histogram for Given Time Block: ");
                 printf("\n");
                 printf("BPM    0 through 40: ");
@@ -719,7 +736,7 @@ parent_loop(int fd) {
                     val = 3;
                     timeBlock = timeBlock + (val*5);
                 }
-                printf("timeBlock: %d \n",timeBlock);
+
                 
 
                 int freq0 = (int) map[timeBlock];
@@ -727,11 +744,23 @@ parent_loop(int fd) {
                 int freq2 = (int) map[timeBlock+2];
                 int freq3 = (int) map[timeBlock+3];
                 int freq4 = (int) map[timeBlock+4];
-                printf("freq0: %d\n",freq0);
-                printf("freq1: %d\n",freq1);
-                printf("freq2: %d\n",freq2);
-                printf("freq3: %d\n",freq3);
-                printf("freq4: %d\n",freq4);
+
+                if(freq0<0){
+                    freq0 = 0;
+                }
+                if(freq1<0){
+                    freq1 = 0;
+                }
+                if(freq2<0){
+                    freq2 = 0;
+                }
+                if(freq3<0){
+                    freq3 = 0;
+                }
+                if(freq4<0){
+                    freq4 = 0;
+                }
+
 
 
                 
@@ -812,20 +841,58 @@ parent_loop(int fd) {
             // default to the current time block. 
             // LINEAR REGRESSION FUNCTION !!!!!!
             else if(strcmp(buffer,regressionX)==0){
+                write(pipeFd[1], "x", 1);
+                read(pipeFd2[0], pipeBuf, 1);
+                while(pipeBuf[0]!='s'){}
                 int retTb;
                 int x = 0, i, j;
-                printf("X is a time block number between 0 and 96\n");
-                printf("Enter X:");
+                int h = 0;
+                int m = 0;
+                printf("Enter hour: ");
                 // gets number of bytes in and puts them into the buffer
-                scanf("%d",&x);
+                scanf("%d",&h);
                 printf("\n");
-                printf("x value: %d \n",x);
+                printf("Enter minute: ");
+                scanf("%d",&m);
+                printf("\n");
+                printf("Hour: %d \n",h);
+                printf("Minute: %d \n",m);
+                int val2 = 0;
+
+                // Calculate time block based on hour and minute entered 
+                x = 0;
+                x = (h * 20);
+
+                if((0<=m)&&(m<15)){
+                    val2 = 0;
+                    x = x + val2;
+
+                }
+                else if((15<=m)&&(m<30)){
+                    val2 = 1;
+                    x = x + (val2*5);
+
+                }
+                else if((30<=m)&&(m<45)){
+                    val2 = 2;
+                    x = x + (val2*5);
+
+                }
+                else if((45<=m)&&(m<60)){
+                    val2 = 3;
+                    x = x + (val2*5);
+                }
+
+                printf("x:  %d\n",x);
 
                 // Values to query in database 
-                int val1 = x*5; 
+
+
 
                 char sql[200];
-                sprintf(sql, "SELECT BPM, Temperature FROM Datapoint WHERE timeblock = %d",val1);
+                sprintf(sql, "SELECT BPM, Temperature FROM Datapoint WHERE timeblock = %d",x);
+
+                printf("%s\n",sql);
 
 
 
@@ -854,13 +921,13 @@ parent_loop(int fd) {
                     for(j = 0; j < NUM_COLS; j++){
                         data_selected[i][j] = sqlite3_column_int(stmt, j);
                         if((j%2)==0){
-                          //  printf("BPM: %d\n",data_selected[i][j]);
+                          printf("BPM: %d\n",data_selected[i][j]);
 			    y1 += data_selected[i][j];
 			    y2 += (data_selected[i][j] * data_selected[i][j]);
 			    xytemp *= data_selected[i][j];
                         }
                         else if((j%2)==1){
-                            // printf("Temperature: %d\n",data_selected[i][j]);
+                            printf("Temperature: %d\n",data_selected[i][j]);
 			    x1 += data_selected[i][j];
 			    x2 += (data_selected[i][j] * data_selected[i][j]);
 			    xytemp *= data_selected[i][j];
@@ -874,16 +941,29 @@ parent_loop(int fd) {
 
 		float a;
 		float b;
-	
-		a = ((y1*x2) - (x1*xy)) / ((numElements*x2) - (x1*x1));
-		b = ((numElements*xy) - (x1*y1))/((numElements*x2)-(x1*x1));
+        printf("numElements: %d\n",numElements);
+	    if(((numElements*x2) - (x1*x1))==0){
+            printf("Linear Regression Function: x = %f\n", x1/numElements);
+        }
+        else{
+		    a = ((y1*x2) - (x1*xy)) / ((numElements*x2) - (x1*x1));
+		    b = ((numElements*xy) - (x1*y1))/((numElements*x2)-(x1*x1));
+            printf("x1 %f\n", x1);
+            printf("x2 %f\n", x2);
+            printf("y1 %f\n", y1);
+            printf("y2 %f\n", y2);
+            printf("xy %f\n", xy);
+            printf("a %f\n", b);
+            printf("b %f\n", a);
+    	   	printf("Linear Regression Function: y = %.4fx + %.4f\n", b, a);
+        }
+        write(pipeFd[1], "r", 1);
 
-		printf("Linear Regression Function: y = %fx + %f\n", b, a);
 
 
 
 
-            }
+        }
             // stat X: Print the following statistics 
             // for a given time block. (for both heart rate and 
             // environment data): reading count, mean, median,
@@ -892,16 +972,46 @@ parent_loop(int fd) {
             else if(strcmp(buffer,statX)==0){
 
                 int retTb;
-                int x = 0;
-                printf("X is a time block number between 0 and 96\n");
-                printf("Enter X: ");
-                // gets number of bytes in and puts them into the buffer
-                scanf("%d",&x);
+                int h1 = 0;
+                int m1 = 0;
+                printf("Enter Hour: ");;
+                scanf("%d",&h1);
+                printf("\n");
+                printf("Enter Minute: ");
+                scanf("%d",&m1);
                 printf("\n");
 
+                printf("Hour: %d\n",h1);
+                printf("Minute: %d\n",m1);
 
-                // Values to query in database 
-                int val1 = x*5; 
+                int val3 = 0;
+                int tbs = 0;
+
+                // Calculate time block based on hour and minute entered 
+                tbs = (h1 * 20);
+
+                if((0<=m1)&&(m1<15)){
+                    val3 = 0;
+                    tbs = tbs + val3;
+
+                }
+                else if((15<=m1)&&(m1<30)){
+                    val3 = 1;
+                    tbs = tbs + (val3*5);
+
+                }
+                else if((30<=m1)&&(m1<45)){
+                    val3 = 2;
+                    tbs = tbs + (val3*5);
+
+                }
+                else if((45<=m1)&&(m1<60)){
+                    val3 = 3;
+                    tbs = tbs + (val3*5);
+                }
+
+                printf("timeBlock:  %d\n",tbs);
+
 
 
                 char *errMsg = 0;
@@ -910,9 +1020,11 @@ parent_loop(int fd) {
     
                 const char* data = "\n";
 
+
+
                 // Reading Count BPM
                 char rcBPM[200];
-                sprintf(rcBPM, "SELECT COUNT(*) AS Reading_Count_Of_BPM FROM Datapoint WHERE timeblock = %d;",val1);
+                sprintf(rcBPM, "SELECT COUNT(*) AS Reading_Count_Of_BPM FROM Datapoint WHERE timeblock = %d;",tbs);
                 retTb = sqlite3_exec(db, rcBPM, callback, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -924,7 +1036,7 @@ parent_loop(int fd) {
 
                 // Reading Count Temperature 
                 char rcTemp[200];
-                sprintf(rcTemp, "SELECT COUNT(*) AS Reading_Count_Of_Temperature FROM Datapoint WHERE timeblock = %d;",val1);
+                sprintf(rcTemp, "SELECT COUNT(*) AS Reading_Count_Of_Temperature FROM Datapoint WHERE timeblock = %d;",tbs);
                 retTb = sqlite3_exec(db, rcTemp, callback, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -934,7 +1046,7 @@ parent_loop(int fd) {
 
                 // Mean BPM
                 char meanBPM[200];
-                sprintf(meanBPM, "SELECT AVG(BPM) AS Average_BPM FROM Datapoint WHERE timeblock = %d;",val1);
+                sprintf(meanBPM, "SELECT AVG(BPM) AS Average_BPM FROM Datapoint WHERE timeblock = %d;",tbs);
                 retTb = sqlite3_exec(db, meanBPM, callback, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -944,7 +1056,7 @@ parent_loop(int fd) {
 
                 // Mean Temperature 
                 char meanTemp[200];
-                sprintf(meanTemp, "SELECT AVG(Temperature) AS Average_Temperature FROM Datapoint WHERE timeblock = %d;",val1);
+                sprintf(meanTemp, "SELECT AVG(Temperature) AS Average_Temperature FROM Datapoint WHERE timeblock = %d;",tbs);
                 retTb = sqlite3_exec(db, meanTemp, callback, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -954,7 +1066,7 @@ parent_loop(int fd) {
 
                 // Mode of BPM
                 char modeBPM[400];
-                sprintf(modeBPM, "SELECT BPM AS Mode_Of_BPM, MAX((SELECT COUNT(BPM) FROM Datapoint AS Datapoint1 WHERE BPM = Datapoint2.BPM AND timeblock = %d GROUP BY BPM ORDER BY COUNT(*) DESC LIMIT 1)) AS Frequency FROM (SELECT DISTINCT BPM FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",val1,val1);
+                sprintf(modeBPM, "SELECT BPM AS Mode_Of_BPM, MAX((SELECT COUNT(BPM) FROM Datapoint AS Datapoint1 WHERE BPM = Datapoint2.BPM AND timeblock = %d GROUP BY BPM ORDER BY COUNT(*) DESC LIMIT 1)) AS Frequency FROM (SELECT DISTINCT BPM FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",tbs,tbs);
                 retTb = sqlite3_exec(db, modeBPM, callback, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -964,7 +1076,7 @@ parent_loop(int fd) {
 
                 // Mode of Temperature 
                 char modeTemp[400];
-                sprintf(modeTemp, "SELECT Temperature AS Mode_Of_Temperature, MAX((SELECT COUNT(Temperature) FROM Datapoint AS Datapoint1 WHERE Temperature = Datapoint2.Temperature AND timeblock = %d GROUP BY Temperature ORDER BY COUNT(*) DESC LIMIT 1)) AS Frequency FROM (SELECT DISTINCT Temperature FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",val1,val1);
+                sprintf(modeTemp, "SELECT Temperature AS Mode_Of_Temperature, MAX((SELECT COUNT(Temperature) FROM Datapoint AS Datapoint1 WHERE Temperature = Datapoint2.Temperature AND timeblock = %d GROUP BY Temperature ORDER BY COUNT(*) DESC LIMIT 1)) AS Frequency FROM (SELECT DISTINCT Temperature FROM Datapoint WHERE timeblock = %d) AS Datapoint2;",tbs,tbs);
                 retTb = sqlite3_exec(db, modeTemp, callback, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -974,7 +1086,7 @@ parent_loop(int fd) {
 
                 // Standard Deviation^2 of BPM
                 char sdBPM[400];
-                sprintf(sdBPM, "SELECT AVG(((Datapoint.BPM - Average)*(Datapoint.BPM - Average))) AS VarianceBPM FROM Datapoint, (SELECT AVG(BPM) AS Average FROM Datapoint AS AverageValues WHERE timeblock = %d) WHERE timeblock = %d;",val1,val1);
+                sprintf(sdBPM, "SELECT AVG(((Datapoint.BPM - Average)*(Datapoint.BPM - Average))) AS VarianceBPM FROM Datapoint, (SELECT AVG(BPM) AS Average FROM Datapoint AS AverageValues WHERE timeblock = %d) WHERE timeblock = %d;",tbs,tbs);
                 retTb = sqlite3_exec(db, sdBPM, callbacksd, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -984,7 +1096,7 @@ parent_loop(int fd) {
 
                 // Standard Deviation^2 of Temperature
                 char sdTemp[400];
-                sprintf(sdTemp, "SELECT AVG(((Datapoint.Temperature - Average)*(Datapoint.Temperature - Average))) AS VarianceTemperature FROM Datapoint, (SELECT AVG(Temperature) AS Average FROM Datapoint AS AverageValues WHERE timeblock = %d) WHERE timeblock = %d;",val1,val1);
+                sprintf(sdTemp, "SELECT AVG(((Datapoint.Temperature - Average)*(Datapoint.Temperature - Average))) AS VarianceTemperature FROM Datapoint, (SELECT AVG(Temperature) AS Average FROM Datapoint AS AverageValues WHERE timeblock = %d) WHERE timeblock = %d;",tbs,tbs);
                 retTb = sqlite3_exec(db, sdTemp, callbacksd, (void*)data, &errMsg);
                 if( retTb != SQLITE_OK ) {
                     fprintf(stderr, "SQL error: %s\n", errMsg);
@@ -1032,13 +1144,13 @@ static int callbacksd(void *data, int argc, char **argv, char **azColName){
           if(strcmp(azColName[i],vBPM) && strcmp(argv[i],nullVar)){
             float VarianceBPM = strtof(argv[i],&p1);
             float sdBPM = sqrtf(VarianceBPM);
-            printf("Standard Deviation of BPM: %f\n",sdBPM);
+            printf("Standard Deviation of Temperature: %f\n",sdBPM);
 
           }
           if(strcmp(azColName[i],vTemp) && strcmp(argv[i],nullVar)){
             float VarianceTemperature = strtof(argv[i],&p2);
             float sdTemp = sqrtf(VarianceTemperature);
-            printf("Standard Deviation of Temperature: %f\n",sdTemp);
+            printf("Standard Deviation of BPM: %f\n",sdTemp);
           }
       }
    
@@ -1055,6 +1167,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     char buf[64]; // buffer to store response from arduino
     // this if statement sends the command to the arduino and
     // returns an error upon failure
+    tcflush(fd, TCIOFLUSH);
     if (write(fd, cmd, len) == -1) {
         perror("serial-write");
         return -1;
@@ -1117,12 +1230,6 @@ send_cmd(int fd, char *cmd, size_t len) {
 
     hourVar = (int) hour;
     minuteVar = (int) minute;
-
-    printf("hourVar %d\n",hourVar);
-    printf("minuteVar %d\n",minuteVar);
-
-    // printf("Time: %d:%d:%d \n",hourVar,minuteVar,secondVar);
-
 
 
 
@@ -1226,12 +1333,14 @@ send_cmd(int fd, char *cmd, size_t len) {
         char minuteString[2];
         int mv = minuteVar;
         tostring(minuteString,mv);
-        recTime[3] = minuteString[1];
-        recTime[4] = minuteString[0];
+        recTime[4] = minuteString[1];
+        recTime[3] = minuteString[0];
     }
     else {
         printf("Error with minuteVar.\n");
     }
+
+    
 
     int val1 = 0;
 
@@ -1243,7 +1352,7 @@ send_cmd(int fd, char *cmd, size_t len) {
     }
     else if((15<=minuteVar)&&(minuteVar<30)){
         val1 = 1;
-        timeBlock = timeBlock + (val*5);
+        timeBlock = timeBlock + (val1*5);
 
      }
     else if((30<=minuteVar)&&(minuteVar<45)){
@@ -1255,11 +1364,11 @@ send_cmd(int fd, char *cmd, size_t len) {
          timeBlock = timeBlock + (val1*5);
     }
 
+
+
     temperature = (float) tmp;
     temperature = temperature * 1.8;
     temperature = temperature + 32;
-
-
 
     
 
@@ -1403,6 +1512,41 @@ send_cmd_date(int fd, char *cmd, size_t len) {
     
     
     
+    return count;
+}
+
+int
+send_cmd_hour_minute(int fd, char *cmd, size_t len) {
+    int count; 
+    char buf[5]; 
+    tcflush(fd, TCIOFLUSH);
+    if (write(fd, cmd, len) == -1) {
+        printf("Serial write error.\n");
+        return -1;
+    }
+    sleep(2);
+    count = read(fd, buf, sizeof(buf));
+    if (count == -1) {
+        perror("serial-read");
+        return -1;
+    } 
+    char hour;
+    char minute;
+
+    if(buf[2] == '\n'){
+        hour = buf[0];
+        minute = buf[1];
+    }
+
+    else {
+        hour = 'H';
+        minute = 'M';
+    }
+
+
+    hourVar = (int) hour;
+    minuteVar = (int) minute;
+
     return count;
 }
 

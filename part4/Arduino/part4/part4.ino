@@ -62,6 +62,7 @@ String low = "LOW\r";
 String high = "HIG\r";
 String hist = "HST\r";
 String dateCmd  = "DTE\r";
+String hrCmd = "HRM\r";
 
 
 // Volatile Variables, used in the interrupt service routine!
@@ -324,37 +325,21 @@ void loop(){
     }
    //  String dateCmd  = "DTE\r";
     else if(command.equals(dateCmd)){
-      //lcd.write("Date");
-      //delay(500);
       readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
-      //delay(500);
-      /*lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Day: ");
-      lcd.setCursor(0,1);
-      lcd.print(dayOfMonthGet);
-      //delay(500);
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Month: ");
-      lcd.setCursor(0,1);
-      lcd.print(monthGet);
-      //delay(500);
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Year: ");
-      lcd.setCursor(0,1);
-      lcd.print(yearGet);
-      //delay(500);*/
       Serial.write("A");
       Serial.write(dayOfMonthGet);
       Serial.write(monthGet);
       Serial.write(yearGet);
       Serial.write("\n");
-      
-
-      
     }
+    else if(command.equals(hrCmd)){
+      readDS3231time(&secondGet,&minuteGet,&hourGet,&dayOfWeekGet,&dayOfMonthGet,&monthGet,&yearGet);
+      Serial.write(hourGet);
+      Serial.write(minuteGet);
+      Serial.write("\n");
+    }
+           
+
   }
   
   if(QS == true){     // A Heartbeat Was Found        
